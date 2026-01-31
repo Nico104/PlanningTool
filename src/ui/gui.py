@@ -278,6 +278,14 @@ class MainWindow(QMainWindow):
 
 def run_gui():
     app = QApplication([])
+    
+    # --- load global QSS ---
+    # qss_path = Path(__file__).resolve().parents[2] / "styles" / "light.qss"
+    qss_path = Path(__file__).parent.parent / "styles" / "light.qss"
+    print(qss_path)
+    if qss_path.exists():
+        app.setStyleSheet(qss_path.read_text(encoding="utf-8"))
+    
     w = MainWindow(Path("data"))
     w.resize(1500, 900)
     w.show()

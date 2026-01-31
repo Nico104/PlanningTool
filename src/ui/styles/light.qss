@@ -1,0 +1,66 @@
+/* === Base === */
+QWidget { font-size: 12px; }
+QLabel#HintLabel { color: #8e8e8e; }
+
+QWidget#HeaderBar {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+}
+
+/* --- Inputs --- */
+QLineEdit, QComboBox, QDateEdit {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 7px 10px;
+  min-height: 30px;
+}
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
+  border: 1px solid rgba(80,160,255,0.9);
+}
+QComboBox::drop-down { border: none; width: 24px; }
+
+/* --- Buttons --- */
+QPushButton {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: 7px 12px;
+  min-height: 30px;
+}
+QPushButton:hover { background: rgba(255,255,255,0.10); }
+QPushButton:pressed { background: rgba(255,255,255,0.14); }
+
+QPushButton#PrimaryButton {
+  background: rgba(80,160,255,0.95);
+  border: 1px solid rgba(80,160,255,1.0);
+  color: #0b0b0b;
+  font-weight: 600;
+}
+QPushButton#PrimaryButton:hover { background: rgba(80,160,255,1.0); }
+QPushButton#PrimaryButton:pressed { background: rgba(70,145,235,1.0); }
+
+/* --- Tables --- */
+QTableWidget {
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 12px;
+  gridline-color: rgba(255,255,255,0.08);
+}
+QHeaderView::section {
+  background: rgba(255,255,255,0.04);
+  border: none;
+  padding: 7px 10px;
+  font-weight: 600;
+}
+QTableCornerButton::section { background: rgba(255,255,255,0.04); border: none; }
+
+/* --- Info chips --- */
+QLabel#Chip {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 5px 10px;
+}
+
