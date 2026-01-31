@@ -1,0 +1,6 @@
+{
+  "time_slot_minutes": 5,
+  "day_start": "07:30",
+  "day_end": "20:00",
+  "date_format_display": "DD.MM.YYYY"
+}

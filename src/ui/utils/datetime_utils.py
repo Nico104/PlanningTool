@@ -1,0 +1,18 @@
+from datetime import date, time, timedelta
+from PySide6.QtCore import QDate
+
+
+def fmt_date(d: date) -> str:
+    return d.strftime("%d.%m.%Y")
+
+def fmt_time(t: time) -> str:
+    return t.strftime("%H:%M")
+
+def qdate_to_date(qd: QDate) -> date:
+    return date(qd.year(), qd.month(), qd.day())
+
+def date_to_qdate(d: date) -> QDate:
+    return QDate(d.year, d.month, d.day)
+
+def monday_of(d: date) -> date:
+    return d - timedelta(days=d.weekday())
