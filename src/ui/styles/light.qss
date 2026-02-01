@@ -1,66 +1,250 @@
-/* === Base === */
-QWidget { font-size: 12px; }
-QLabel#HintLabel { color: #8e8e8e; }
+/* =========================================================
+   OFF-WHITE · Clean · Minimal · Light (Fusion)
+   ========================================================= */
 
+/* --- Base ------------------------------------------------ */
+QWidget {
+  font-size: 12px;
+  color: #2b2b2b;
+  background: #f8f7f5;   /* off-white */
+}
+
+QLabel {
+  background: transparent;
+}
+
+QLabel#HintLabel {
+  color: #8a8a86;
+}
+
+*:disabled {
+  color: #a3a39e;
+}
+
+/* --- Surfaces ------------------------------------------- */
 QWidget#HeaderBar {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.07);
+  background: #fcfbfa;
+  border: 1px solid #e4e2df;
   border-radius: 12px;
 }
 
-/* --- Inputs --- */
-QLineEdit, QComboBox, QDateEdit {
-  background: rgba(0,0,0,0.25);
-  border: 1px solid rgba(255,255,255,0.12);
+/* --- Inputs --------------------------------------------- */
+QLineEdit, QComboBox, QDateEdit, QSpinBox, QDoubleSpinBox,
+QTextEdit, QPlainTextEdit {
+  background: #fcfbfa;
+  border: 1px solid #dedbd7;
   border-radius: 10px;
   padding: 7px 10px;
   min-height: 30px;
+  color: #2b2b2b;
+  selection-background-color: #dfe7f5;
+  selection-color: #2b2b2b;
 }
-QLineEdit:focus, QComboBox:focus, QDateEdit:focus {
-  border: 1px solid rgba(80,160,255,0.9);
-}
-QComboBox::drop-down { border: none; width: 24px; }
 
-/* --- Buttons --- */
-QPushButton {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
+QLineEdit::placeholder,
+QTextEdit::placeholder,
+QPlainTextEdit::placeholder {
+  color: #a3a39e;
+}
+
+QLineEdit:focus, QComboBox:focus, QDateEdit:focus,
+QSpinBox:focus, QDoubleSpinBox:focus,
+QTextEdit:focus, QPlainTextEdit:focus {
+  border: 1px solid #7fa1d8;
+}
+
+QLineEdit:disabled, QComboBox:disabled, QDateEdit:disabled,
+QTextEdit:disabled {
+  background: #f1f0ee;
+  border: 1px solid #e4e2df;
+}
+
+/* --- ComboBox popup ------------------------------------- */
+QComboBox::drop-down {
+  border: none;
+  width: 26px;
+}
+
+QComboBox QAbstractItemView {
+  background: #fcfbfa;
+  border: 1px solid #e4e2df;
+  border-radius: 10px;
+  padding: 6px;
+  outline: none;
+}
+
+QComboBox QAbstractItemView::item {
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+
+
+
+
+/* --- Buttons -------------------------------------------- */
+QPushButton, QToolButton {
+  background: #fcfbfa;
+  border: 1px solid #dedbd7;
   border-radius: 10px;
   padding: 7px 12px;
   min-height: 30px;
+  color: #2b2b2b;
 }
-QPushButton:hover { background: rgba(255,255,255,0.10); }
-QPushButton:pressed { background: rgba(255,255,255,0.14); }
 
+QPushButton:hover, QToolButton:hover {
+  background: #f1f0ee;
+}
+
+QPushButton:pressed, QToolButton:pressed {
+  background: #e8e7e4;
+}
+
+QPushButton:disabled {
+  background: #f1f0ee;
+  border: 1px solid #e4e2df;
+  color: #a3a39e;
+}
+
+/* --- Primary Button ------------------------------------- */
 QPushButton#PrimaryButton {
-  background: rgba(80,160,255,0.95);
-  border: 1px solid rgba(80,160,255,1.0);
-  color: #0b0b0b;
+  background: #6f93d6;
+  border: 1px solid #6f93d6;
+  color: #ffffff;
   font-weight: 600;
 }
-QPushButton#PrimaryButton:hover { background: rgba(80,160,255,1.0); }
-QPushButton#PrimaryButton:pressed { background: rgba(70,145,235,1.0); }
 
-/* --- Tables --- */
-QTableWidget {
-  background: rgba(0,0,0,0.18);
-  border: 1px solid rgba(255,255,255,0.07);
-  border-radius: 12px;
-  gridline-color: rgba(255,255,255,0.08);
+QPushButton#PrimaryButton:hover {
+  background: #6187cb;
 }
+
+QPushButton#PrimaryButton:pressed {
+  background: #567bbb;
+}
+
+QPushButton#PrimaryButton:disabled {
+  background: #b8c8ea;
+  border: 1px solid #b8c8ea;
+}
+
+/* --- Tables / Views ------------------------------------- */
+QTableWidget, QTableView, QTreeView, QListView {
+  background: #fcfbfa;
+  border: 1px solid #e4e2df;
+  border-radius: 12px;
+  gridline-color: #f0efec;
+  alternate-background-color: #faf9f7;
+}
+
+QTableWidget::item, QTableView::item,
+QTreeView::item, QListView::item {
+  padding: 6px;
+}
+
+QTableWidget::item:selected,
+QTableView::item:selected,
+QTreeView::item:selected,
+QListView::item:selected {
+  background: #e6ecf7;
+  color: #2b2b2b;
+}
+
 QHeaderView::section {
-  background: rgba(255,255,255,0.04);
+  background: #f3f2ef;
   border: none;
+  border-bottom: 1px solid #e4e2df;
   padding: 7px 10px;
   font-weight: 600;
+  color: #3a3a3a;
 }
-QTableCornerButton::section { background: rgba(255,255,255,0.04); border: none; }
 
-/* --- Info chips --- */
+QTableCornerButton::section {
+  background: #f3f2ef;
+  border: none;
+  border-bottom: 1px solid #e4e2df;
+}
+
+/* --- Scrollbars ----------------------------------------- */
+QScrollBar:vertical {
+  background: transparent;
+  width: 10px;
+  margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+  background: #d0cdc9;
+  border-radius: 5px;
+  min-height: 24px;
+}
+
+QScrollBar::handle:vertical:hover {
+  background: #bab7b3;
+}
+
+QScrollBar:horizontal {
+  background: transparent;
+  height: 10px;
+  margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+  background: #d0cdc9;
+  border-radius: 5px;
+  min-width: 24px;
+}
+
+QScrollBar::handle:horizontal:hover {
+  background: #bab7b3;
+}
+
+/* --- Chips ---------------------------------------------- */
 QLabel#Chip {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
+  background: #eeedea;
+  border: 1px solid #dad7d3;
   border-radius: 999px;
   padding: 5px 10px;
+  color: #199643;
 }
 
+/* --- Dock titles ---------------------------------------- */
+QDockWidget::title {
+  background: #f3f2ef;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e4e2df;
+  font-weight: 600;
+}
+
+/* --- Menus / Tooltips ----------------------------------- */
+QMenuBar {
+  background: #e8e7e4;
+  border: none;
+  color: #2b2b2b;
+}
+
+QMenuBar::item:selected {
+  background: #dfe7f5;
+}
+
+QMenu {
+  background: #fcfbfa;
+  border: 1px solid #e4e2df;
+  border-radius: 10px;
+  padding: 6px;
+}
+
+QMenu::item {
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+QMenu::item:selected {
+  background: #e6ecf7;
+}
+
+QToolTip {
+  background: #fcfbfa;
+  color: #2b2b2b;
+  border: 1px solid #e4e2df;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
