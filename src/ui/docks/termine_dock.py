@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QDockWidget, QTableWidget, QTableWidgetItem, QMenu
 
 from ...ui.utils.datetime_utils import fmt_date, fmt_time
 from ...models.models import Termin, Lehrveranstaltung, Raum
-from ..widgets.draggableTerminTable import DraggableTerminTable
+from ..widgets.termine_table_draggable import DraggableTerminTable
 
 
 class TermineDock(QDockWidget):
