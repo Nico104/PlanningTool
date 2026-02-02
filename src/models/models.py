@@ -55,8 +55,8 @@ class Termin:
     lva_id: str
     semester_id: str
     typ: str
-    datum: date
-    zeit: Zeitfenster
+    datum: Optional[date]
+    zeit: Optional[Zeitfenster]
     raum_id: str
     gruppe: Gruppe
     anwesenheitspflicht: bool

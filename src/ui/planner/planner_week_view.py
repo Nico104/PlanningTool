@@ -78,7 +78,9 @@ class PlannerWeekView:
         # keep Mo–Sa only
         terms = [
             t for t in filtered_termine
-            if week_mo <= t.datum <= week_su and t.datum.weekday() <= 5
+            if t.datum is not None
+            and week_mo <= t.datum <= week_su
+            and t.datum.weekday() <= 5
         ]
 
         self._build_week_table(week_mo, terms)
@@ -168,8 +170,8 @@ class PlannerWeekView:
         if tid:
             self.edit_by_id_cb(str(tid))
 
-    def _on_termin_dropped(self, termin_id: str, row: int, col: int):
-        # col 0 is time column -> ignore
+    def _on_termin_dropped(self, termin_id: str, row: int, col: int) -> None:
+        # col 0 ist Zeit-Spalte
         if col <= 0:
             return
 
@@ -182,5 +184,6 @@ class PlannerWeekView:
             return
         target_start = slots[row]
 
-        # call back into workspace/actions
+        # View macht NUR callback (Workspace entscheidet Speichern + Reload + Refresh)
         self.on_drop_cb(str(termin_id), target_date, target_start)
+

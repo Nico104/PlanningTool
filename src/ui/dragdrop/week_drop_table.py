@@ -16,8 +16,13 @@ class WeekDropTable(QTableWidget):
     def __init__(self, rows: int, cols: int, parent=None):
         super().__init__(rows, cols, parent)
         self.setAcceptDrops(True)
-        self.setDragDropMode(QTableWidget.DropOnly)
+        # self.setDragDropMode(QTableWidget.DropOnly)
+        # self.setDefaultDropAction(Qt.MoveAction)
+        
+        self.setDragEnabled(True)
+        self.setDragDropMode(QTableWidget.DragDrop)
         self.setDefaultDropAction(Qt.MoveAction)
+        self.setSelectionMode(QTableWidget.SingleSelection)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasFormat(self.MIME):
@@ -48,3 +53,22 @@ class WeekDropTable(QTableWidget):
 
         self.terminDropped.emit(termin_id, r, c)
         e.acceptProposedAction()
+        
+    def startDrag(self, supportedActions):
+        it = self.currentItem()
+        if not it:
+            return
+        termin_id = it.data(Qt.UserRole)
+        if not termin_id:
+            return  # empty cell
+
+        from PySide6.QtGui import QDrag
+        from PySide6.QtCore import QMimeData
+
+        drag = QDrag(self)
+        mime = QMimeData()
+        mime.setData(self.MIME, str(termin_id).encode("utf-8"))
+        drag.setMimeData(mime)
+        drag.exec(Qt.MoveAction)
+
+

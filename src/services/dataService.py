@@ -68,22 +68,45 @@ class DataService:
     def load_termine(self) -> List[Termin]:
         raw = self._read("termine.json")["termine"]
         out: List[Termin] = []
+
         for x in raw:
-            z = x["zeit"]
-            g = x["gruppe"]
+            # optional fields
+            z = x.get("zeit")          # may be missing or None
+            g = x.get("gruppe") or {}  # may be missing
+
+            # datum optional
+            d_raw = x.get("datum")
+            datum = self._parse_date(d_raw) if d_raw else None
+
+            # zeit optional
+            zeit = None
+            if isinstance(z, dict):
+                von_raw = z.get("von")
+                bis_raw = z.get("bis")
+
+                # if one is missing, keep it None (works with your saving)
+                von = self._parse_time(von_raw) if von_raw else None
+                bis = self._parse_time(bis_raw) if bis_raw else None
+
+                # if both missing -> treat as None (unassigned)
+                if von is not None or bis is not None:
+                    zeit = Zeitfenster(von=von, bis=bis)
+
             out.append(Termin(
                 id=x["id"],
                 lva_id=x["lva_id"],
                 semester_id=x["semester_id"],
                 typ=x["typ"],
-                datum=self._parse_date(x["datum"]),
-                zeit=Zeitfenster(von=self._parse_time(z["von"]), bis=self._parse_time(z["bis"])),
-                raum_id=x["raum_id"],
-                gruppe=Gruppe(name=g.get("name","-"), groesse=int(g.get("groesse", 0))),
-                anwesenheitspflicht=bool(x["anwesenheitspflicht"]),
+                datum=datum,
+                zeit=zeit,
+                raum_id=x.get("raum_id", ""),
+                gruppe=Gruppe(name=g.get("name", "-"), groesse=int(g.get("groesse", 0) or 0)),
+                anwesenheitspflicht=bool(x.get("anwesenheitspflicht", False)),
                 notiz=x.get("notiz", ""),
             ))
+
         return out
+
 
     def load_settings(self) -> Dict[str, Any]:
         return self._read("settings.json")
@@ -120,8 +143,8 @@ class DataService:
                 "lva_id": t.lva_id,
                 "semester_id": t.semester_id,
                 "typ": t.typ,
-                "datum": self._fmt_date(t.datum),
-                "zeit": {"von": self._fmt_time(t.zeit.von), "bis": self._fmt_time(t.zeit.bis)},
+                "datum": self._fmt_date(t.datum) if t.datum is not None else None,
+                "zeit": {"von": self._fmt_time(t.zeit.von) if t.zeit and t.zeit.von else None, "bis": self._fmt_time(t.zeit.bis) if t.zeit and t.zeit.bis else None} if t.zeit else None,
                 "raum_id": t.raum_id,
                 "gruppe": {"name": t.gruppe.name, "groesse": t.gruppe.groesse},
                 "anwesenheitspflicht": t.anwesenheitspflicht,

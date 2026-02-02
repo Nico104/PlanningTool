@@ -7,6 +7,9 @@ from .planner_state import PlannerState
 from datetime import date, datetime, time, timedelta
 from dataclasses import replace
 
+from ...models.models import Zeitfenster
+
+
 
 
 class PlannerActions:
@@ -56,6 +59,56 @@ class PlannerActions:
         return True
     
     def move_termin(self, termin_id: str, new_date: date, new_start: time) -> bool:
+        """
+        Move termin to new_date + new_start.
+        - keeps duration (bis - von) if assigned
+        - if unassigned -> default 30 minutes
+        - persists via DataService.save_termine
+        """
+        t = next((x for x in self.state.termine if x.id == termin_id), None)
+        if not t:
+            return False
+
+        # duration (keep if possible)
+        dur = timedelta(minutes=30)
+        if getattr(t, "zeit", None) and t.zeit.von and t.zeit.bis:
+            try:
+                dur = (
+                    datetime.combine(date(2000, 1, 1), t.zeit.bis)
+                    - datetime.combine(date(2000, 1, 1), t.zeit.von)
+                )
+                if dur.total_seconds() <= 0:
+                    dur = timedelta(minutes=30)
+            except Exception:
+                dur = timedelta(minutes=30)
+
+        new_end = (datetime.combine(new_date, new_start) + dur).time()
+
+        # build new Zeitfenster (don't replace(None,...))
+        new_zeit = Zeitfenster(von=new_start, bis=new_end)
+
+        # ✅ Update termin (try dataclass replace, else mutate)
+        try:
+            # if Termin is a dataclass, this is clean
+            new_t = replace(t, datum=new_date, zeit=new_zeit)
+        except Exception:
+            # fallback if Termin isn't a dataclass
+            t.datum = new_date
+            t.zeit = new_zeit
+            new_t = t
+
+        # replace in list
+        self.state.termine = [new_t if x.id == termin_id else x for x in self.state.termine]
+
+        # update map if present
+        if hasattr(self.state, "termin_map"):
+            self.state.termin_map[termin_id] = new_t
+
+        self.state.ds.save_termine(self.state.termine)
+        return True
+
+    
+    def move_termin_old(self, termin_id: str, new_date: date, new_start: time) -> bool:
         """
         Move termin to new_date + new_start.
         - keeps duration (bis - von)
