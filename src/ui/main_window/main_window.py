@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget
 
 from src.services.dataService import DataService
 
-from ..docks import TermineDock, LVADock, RoomDock, SemesterDock, DataEditorDock
+from ..docks import TermineDock, DataEditorDock
 from .actions import build_menus, attach_settings_handler
 from .crud_handlers import CrudHandlers
 from .layout_manager import LayoutManager
@@ -57,32 +57,7 @@ class MainWindow(QMainWindow):
             QMainWindow.GroupedDragging
         )
 
-    def _setup_docks_old(self) -> None:
-        # Planner
-        # self.planner = PlannerDock(self, self.ds, on_data_changed=self.refresh_docks)
-        # self.planner.setObjectName("dock_planner")
-        # self.addDockWidget(Qt.RightDockWidgetArea, self.planner)
-        self.planner = PlannerWorkspace(self, self.ds, on_data_changed=self.refresh_docks)
-        self.setCentralWidget(self.planner)
 
-        # Left side tabbed docks
-        self.termine_dock = TermineDock(self)
-        self.termine_dock.setObjectName("dock_termine")
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.termine_dock)
-        
-        self.lva_dock = LVADock(self)
-        self.lva_dock.setObjectName("dock_lvas")
-        self.addDockWidget(Qt.BottomDockWidgetArea, self.lva_dock)
-
-        self.room_dock = RoomDock(self)
-        self.room_dock.setObjectName("dock_rooms")
-        self.tabifyDockWidget(self.lva_dock, self.room_dock)
-
-        self.sem_dock = SemesterDock(self)
-        self.sem_dock.setObjectName("dock_semester")
-        self.tabifyDockWidget(self.lva_dock, self.sem_dock)
-
-        self.termine_dock.raise_()  # default tab
         
     def _setup_docks(self) -> None:
         # Planner

@@ -4,6 +4,7 @@ from datetime import date, time, timedelta
 from typing import Dict, List, Callable
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QDateEdit, QHeaderView
 
 from ...models.models import Termin
@@ -27,10 +28,26 @@ def _time_slots() -> List[time]:
     return slots
 
 
+def _mins(t: time) -> int:
+    return t.hour * 60 + t.minute
+
+
+# --- Option A: simple color mapping by type (background + foreground) ---
+TYPE_COLORS: Dict[str, QColor] = {
+    "VO": QColor("#E3F2FD"),  # light blue
+    "UE": QColor("#E8F5E9"),  # light green
+    "LU": QColor("#FFF3E0"),  # light orange
+    "SE": QColor("#F3E5F5"),  # light purple
+}
+DEFAULT_BG = QColor("#F7F7F7")
+DEFAULT_FG = QColor("#111111")
+
+
 class PlannerWeekView:
     """
     Shows a week grid (Mo–Sa) with time slots as rows.
     Supports dropping a Termin (by id) onto a cell -> calls on_drop_cb(id, target_date, target_time).
+    Renders Termine as blocks spanning multiple rows based on duration (GRID_MIN).
     """
 
     def __init__(
@@ -110,6 +127,11 @@ class PlannerWeekView:
             it.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             self.week_table.setItem(r, 0, it)
 
+        # clear all spans first (important when refreshing)
+        for r in range(len(slots)):
+            for c in range(1, 1 + len(days)):
+                self.week_table.setSpan(r, c, 1, 1)
+
         # prepare empty cells
         for col in range(6):
             d0 = week_mo + timedelta(days=col)
@@ -117,11 +139,19 @@ class PlannerWeekView:
                 cell = QTableWidgetItem("")
                 cell.setFlags(cell.flags() & ~Qt.ItemIsEditable)
                 cell.setTextAlignment(Qt.AlignLeft | Qt.AlignTop)
-                cell.setData(Qt.UserRole, None)  # will store termin id if we render one
-                cell.setData(Qt.UserRole + 1, d0.isoformat())  # store target date
+                cell.setData(Qt.UserRole, None)  # termin id
+                cell.setData(Qt.UserRole + 1, d0.isoformat())  # target date
+
+                # reset styling for empty cells
+                cell.setBackground(QBrush(Qt.transparent))
+                cell.setForeground(QBrush(DEFAULT_FG))
+                f = cell.font()
+                f.setBold(False)
+                cell.setFont(f)
+
                 self.week_table.setItem(r, 1 + col, cell)
 
-        # render existing Termine into grid (basic: put text at start slot)
+        # render existing Termine into grid as blocks (span rows by duration)
         by_day: Dict[date, List[Termin]] = {}
         for t in terms:
             by_day.setdefault(t.datum, []).append(t)
@@ -133,25 +163,66 @@ class PlannerWeekView:
             items = by_day.get(d0, [])
 
             for t in items:
-                # find matching row by start time (HH:MM)
-                try:
-                    hh, mm = [int(x) for x in str(t.zeit.von).split(":")[:2]]
-                    start_t = time(hour=hh, minute=mm)
-                except Exception:
+                start_raw = t.zeit.von
+                end_raw = t.zeit.bis
+                if not isinstance(start_raw, time) or not isinstance(end_raw, time):
                     continue
 
+                start_min = _mins(start_raw)
+                end_min = _mins(end_raw)
+                if end_min <= start_min:
+                    continue
+
+                start_t = time(hour=start_min // 60, minute=start_min % 60)
                 if start_t not in slots:
                     continue
 
                 row = slots.index(start_t)
-                cell = self.week_table.item(row, 1 + col)
+
+                # duration -> number of rows (ceil to GRID_MIN)
+                dur_min = end_min - start_min
+                span_rows = max(1, (dur_min + GRID_MIN - 1) // GRID_MIN)
+
+                # clamp so we don't run past the end of the table
+                span_rows = min(span_rows, len(slots) - row)
+
+                col_idx = 1 + col
+
+                # clear existing span at start cell (safety)
+                self.week_table.setSpan(row, col_idx, 1, 1)
+
+                # clear items in covered rows so text doesn't appear below
+                for rr in range(row, row + span_rows):
+                    it = self.week_table.item(rr, col_idx)
+                    if it is None:
+                        it = QTableWidgetItem("")
+                        it.setFlags(it.flags() & ~Qt.ItemIsEditable)
+                        it.setTextAlignment(Qt.AlignLeft | Qt.AlignTop)
+                        it.setData(Qt.UserRole + 1, d0.isoformat())
+                        self.week_table.setItem(rr, col_idx, it)
+
+                    it.setText("")
+                    it.setData(Qt.UserRole, None)
+
+                    # also reset styling
+                    it.setBackground(QBrush(Qt.transparent))
+                    it.setForeground(QBrush(DEFAULT_FG))
+                    f = it.font()
+                    f.setBold(False)
+                    it.setFont(f)
+
+                # apply span
+                self.week_table.setSpan(row, col_idx, span_rows, 1)
+
+                cell = self.week_table.item(row, col_idx)
                 if not cell:
                     continue
 
                 lva = self.state.lva_map.get(t.lva_id)
                 lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
                 room_s = f"{t.raum_id}"
-                grp = "" if t.gruppe.name in ("", "-", None) else f" Gr.{t.gruppe.name}"
+                gname = (t.gruppe.name if t.gruppe else "")
+                grp = "" if (not gname or gname == "-") else f" Gr.{gname}"
                 ap = " AP" if t.anwesenheitspflicht else ""
 
                 cell.setText(
@@ -159,6 +230,16 @@ class PlannerWeekView:
                     f"{t.typ} | {room_s} | {lva_short}{grp}{ap}"
                 )
                 cell.setData(Qt.UserRole, t.id)
+
+                # ---- color by type (Option A) ----
+                typ = (t.typ or "").strip().upper()
+                bg = TYPE_COLORS.get(typ, DEFAULT_BG)
+                cell.setBackground(QBrush(bg))
+                cell.setForeground(QBrush(DEFAULT_FG))
+
+                f = cell.font()
+                f.setBold(False)
+                cell.setFont(f)
 
     def _on_double_click(self, row: int, col: int):
         if col <= 0:
@@ -186,4 +267,3 @@ class PlannerWeekView:
 
         # View macht NUR callback (Workspace entscheidet Speichern + Reload + Refresh)
         self.on_drop_cb(str(termin_id), target_date, target_start)
-

@@ -5,8 +5,11 @@
       "lva_id": "123.456",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": null,
-      "zeit": null,
+      "datum": "2026-02-03",
+      "zeit": {
+        "von": "12:00",
+        "bis": "12:30"
+      },
       "raum_id": "F01",
       "gruppe": null,
       "anwesenheitspflicht": false,
@@ -17,13 +20,13 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": null,
-      "zeit": null,
-      "raum_id": "E17",
-      "gruppe": {
-        "name": "-",
-        "groesse": 0
+      "datum": "2026-02-02",
+      "zeit": {
+        "von": "10:00",
+        "bis": "11:30"
       },
+      "raum_id": "E17",
+      "gruppe": null,
       "anwesenheitspflicht": false,
       "notiz": ""
     },
@@ -32,13 +35,13 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "UE",
-      "datum": null,
-      "zeit": null,
-      "raum_id": "F01",
-      "gruppe": {
-        "name": "A",
-        "groesse": 24
+      "datum": "2026-02-02",
+      "zeit": {
+        "von": "14:30",
+        "bis": "15:00"
       },
+      "raum_id": "F01",
+      "gruppe": null,
       "anwesenheitspflicht": true,
       "notiz": "Übungsgruppe A"
     },
@@ -47,32 +50,35 @@
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-18",
+      "datum": "2026-02-04",
       "zeit": {
-        "von": "13:00",
-        "bis": "13:30"
+        "von": "14:30",
+        "bis": "15:00"
       },
       "raum_id": "E17",
       "gruppe": {
-        "name": "-",
-        "groesse": 0
+        "name": "",
+        "groesse": 1
       },
       "anwesenheitspflicht": false,
-      "notiz": "(absichtlich überlappend – Demo-Konflikt)"
+      "notiz": ""
     },
     {
       "id": "T005",
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "LU",
-      "datum": null,
-      "zeit": null,
+      "datum": "2026-02-04",
+      "zeit": {
+        "von": "17:30",
+        "bis": "18:00"
+      },
       "raum_id": "LAB3",
       "gruppe": {
         "name": "B",
         "groesse": 20
       },
-      "anwesenheitspflicht": true,
+      "anwesenheitspflicht": false,
       "notiz": ""
     }
   ]

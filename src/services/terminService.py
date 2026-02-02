@@ -25,6 +25,10 @@ class TerminService:
         for t in termine:
             if semester_id and t.semester_id != semester_id:
                 continue
+            
+            if t.datum is None or t.zeit is None or t.zeit.von is None or t.zeit.bis is None:
+                continue
+            
             buckets.setdefault((t.raum_id, t.datum), []).append(t)
 
         conflicts: List[Konflikt] = []
@@ -67,9 +71,15 @@ class TerminService:
         # relevante Termine
         rel = [
             t for t in termine
-            if t.raum_id == raum_id and t.datum == datum and (semester_id is None or t.semester_id == semester_id)
+            if t.raum_id == raum_id
+            and t.datum == datum
+            and t.zeit is not None
+            and t.zeit.von is not None
+            and t.zeit.bis is not None
+            and (semester_id is None or t.semester_id == semester_id)
         ]
         rel = sorted(rel, key=lambda x: (x.zeit.von, x.zeit.bis))
+
 
         start_dt = self._to_dt(datum, day_start)
         end_dt = self._to_dt(datum, day_end)

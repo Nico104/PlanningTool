@@ -293,7 +293,7 @@ class TermineDock(QDockWidget):
         self.container.terminDroppedToList.connect(self._on_drop_to_list)
 
         self.list_layout = QVBoxLayout(self.container)
-        self.list_layout.setContentsMargins(2, 2, 2, 2)
+        self.list_layout.setContentsMargins(8, 2, 8, 2)
         self.list_layout.setSpacing(8)
         self.list_layout.addStretch(1)
 
