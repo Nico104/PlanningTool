@@ -16,6 +16,7 @@ from .planner_day_view import PlannerDayView
 from .planner_week_view import PlannerWeekView
 from .planner_actions import PlannerActions
 
+from ..dragdrop.week_drop_table import WeekDropTable
 
 
 class PlannerWorkspace(QWidget):
@@ -26,7 +27,6 @@ class PlannerWorkspace(QWidget):
 
         self.state = PlannerState(ds)
         self.state.reload()
-
 
         root = QVBoxLayout(self)
         root.setContentsMargins(12, 12, 12, 12)
@@ -42,7 +42,7 @@ class PlannerWorkspace(QWidget):
         header_lay.setSpacing(10)
         root.addWidget(header)
 
-        # Left: filters
+        # Left: view selector
         self.view_cb = QComboBox()
         self.view_cb.addItem("Wochen", "week")
         self.view_cb.addItem("Tag", "day")
@@ -50,7 +50,20 @@ class PlannerWorkspace(QWidget):
         self.view_cb.setFixedWidth(120)
         header_lay.addWidget(self.view_cb)
 
+        # NEW: navigation buttons (left / right)
+        self.prev_btn = QPushButton("<")
+        self.prev_btn.setObjectName("NavButton")
+        self.prev_btn.setToolTip("Zurück (Tag: -1, Woche: -7)")
+        self.prev_btn.setFixedWidth(36)
+        header_lay.addWidget(self.prev_btn)
 
+        self.next_btn = QPushButton(">")
+        self.next_btn.setObjectName("NavButton")
+        self.next_btn.setToolTip("Weiter (Tag: +1, Woche: +7)")
+        self.next_btn.setFixedWidth(36)
+        header_lay.addWidget(self.next_btn)
+
+        # Date inputs
         self.day_date = QDateEdit()
         self.day_date.setCalendarPopup(True)
         self.day_date.setDate(QDate.currentDate())
@@ -63,16 +76,9 @@ class PlannerWorkspace(QWidget):
         self.week_from.setToolTip("Wochenbereich: Von")
         self.week_from.setFixedWidth(150)
 
-        # self.week_to = QDateEdit()
-        # self.week_to.setCalendarPopup(True)
-        # self.week_to.setToolTip("Wochenbereich: Bis")
-        # self.week_to.setFixedWidth(150)
-
         today = date.today()
         self.week_from.setDate(date_to_qdate(today - timedelta(days=28)))
-        # self.week_to.setDate(date_to_qdate(today + timedelta(days=28)))
         header_lay.addWidget(self.week_from)
-        # header_lay.addWidget(self.week_to)
 
         self.sem_cb = QComboBox()
         self.sem_cb.setToolTip("Semester filter")
@@ -108,7 +114,7 @@ class PlannerWorkspace(QWidget):
         root.addWidget(self.stack, 1)
 
         self.day_table = QTableWidget(0, 0)
-        self.week_table = QTableWidget(0, 0)
+        self.week_table = WeekDropTable(0, 0)
         self.day_table.setSortingEnabled(False)
         self.week_table.setSortingEnabled(False)
         self.day_table.setAlternatingRowColors(True)
@@ -156,8 +162,8 @@ class PlannerWorkspace(QWidget):
             state=self.state,
             week_table=self.week_table,
             week_from=self.week_from,
-            # week_to=self.week_to,
             edit_by_id_cb=self._edit_termin_by_id,
+            on_drop_cb=self._on_week_drop,
         )
 
         # ─────────────────────────────────────────────────────────────
@@ -166,13 +172,16 @@ class PlannerWorkspace(QWidget):
         self.refresh_btn.clicked.connect(self.refresh)
         self.view_cb.currentIndexChanged.connect(self._on_view_changed)
 
+        # NEW: nav buttons
+        self.prev_btn.clicked.connect(lambda: self._shift_period(-1))
+        self.next_btn.clicked.connect(lambda: self._shift_period(+1))
+
         self.day_date.dateChanged.connect(lambda *_: self.refresh())
         self.week_from.dateChanged.connect(lambda *_: self.refresh())
-        # self.week_to.dateChanged.connect(lambda *_: self.refresh())
         self.sem_cb.currentIndexChanged.connect(lambda *_: self.refresh())
         self.room_cb.currentIndexChanged.connect(lambda *_: self.refresh())
 
-        # Debounced search (feels much smoother on big datasets)
+        # Debounced search
         self._search_timer = QTimer(self)
         self._search_timer.setSingleShot(True)
         self._search_timer.setInterval(180)
@@ -188,14 +197,43 @@ class PlannerWorkspace(QWidget):
         self.refresh(emit=False)
         self._emit_enabled = True
 
+    # ─────────────────────────────────────────────────────────────
+    # NEW: navigation logic
+    # ─────────────────────────────────────────────────────────────
+    def _qdate_to_pydate(self, qd: QDate) -> date:
+        return date(qd.year(), qd.month(), qd.day())
+
+    def _align_to_monday(self, d: date) -> date:
+        # Monday=0 ... Sunday=6
+        return d - timedelta(days=d.weekday())
+
+    def _shift_period(self, direction: int):
+        """
+        direction: -1 (left) or +1 (right)
+        Day view: +/- 1 day
+        Week view: +/- 7 days (kept aligned to Monday)
+        """
+        view = str(self.view_cb.currentData())
+        if view == "day":
+            d = self._qdate_to_pydate(self.day_date.date()) + timedelta(days=direction)
+            self.day_date.setDate(date_to_qdate(d))
+        else:
+            wf = self._qdate_to_pydate(self.week_from.date())
+            wf = self._align_to_monday(wf) + timedelta(days=7 * direction)
+            self.week_from.setDate(date_to_qdate(wf))
+
+        # refresh happens via dateChanged, but calling it here is harmless
+        # and makes it feel instant even if signals are blocked elsewhere
+        self.refresh()
+
     def _init_default_dates(self):
         if not self.state.termine:
             return
         min_d = min(t.datum for t in self.state.termine)
         max_d = max(t.datum for t in self.state.termine)
         self.day_date.setDate(date_to_qdate(min_d))
-        self.week_from.setDate(date_to_qdate(min_d))
-        # self.week_to.setDate(date_to_qdate(max_d))
+        # keep week_from aligned to Monday for the first dataset date
+        self.week_from.setDate(date_to_qdate(self._align_to_monday(min_d)))
 
     def _rebuild_filter_boxes(self):
         current_sem = self.sem_cb.currentData() if self.sem_cb.count() else ""
@@ -241,7 +279,6 @@ class PlannerWorkspace(QWidget):
         if view == "day":
             self.stack.setCurrentWidget(self.day_table)
             self.day_view.refresh(filtered)
-            # show friday chip if day_view sets it
             self.friday_lbl.setVisible(bool(self.friday_lbl.text()))
         else:
             self.stack.setCurrentWidget(self.week_table)
@@ -257,10 +294,13 @@ class PlannerWorkspace(QWidget):
         view = str(self.view_cb.currentData())
         is_day = (view == "day")
 
-        # Modern UX: hide irrelevant date inputs
         self.day_date.setVisible(is_day)
         self.week_from.setVisible(not is_day)
-        # self.week_to.setVisible(not is_day)
+
+        # Optional: when switching to week view, snap week_from to Monday
+        if not is_day:
+            wf = self._qdate_to_pydate(self.week_from.date())
+            self.week_from.setDate(date_to_qdate(self._align_to_monday(wf)))
 
         self.refresh()
 
@@ -274,3 +314,7 @@ class PlannerWorkspace(QWidget):
 
     def set_on_data_changed(self, cb):
         self.on_data_changed = cb
+
+    def _on_week_drop(self, termin_id, new_date, new_start):
+        if self.actions.move_termin(termin_id, new_date=new_date, new_start=new_start):
+            self.refresh()

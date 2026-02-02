@@ -64,26 +64,26 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.planner)
 
         # Left side tabbed docks
-        self.lva_dock = LVADock(self)
-        self.lva_dock.setObjectName("dock_lvas")
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.lva_dock)
-
         self.termine_dock = TermineDock(self)
         self.termine_dock.setObjectName("dock_termine")
         self.addDockWidget(Qt.LeftDockWidgetArea, self.termine_dock)
-        self.tabifyDockWidget(self.lva_dock, self.termine_dock)
+        
+        self.lva_dock = LVADock(self)
+        self.lva_dock.setObjectName("dock_lvas")
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.lva_dock)
+        self.tabifyDockWidget(self.termine_dock, self.lva_dock)
 
         self.room_dock = RoomDock(self)
         self.room_dock.setObjectName("dock_rooms")
         self.addDockWidget(Qt.LeftDockWidgetArea, self.room_dock)
-        self.tabifyDockWidget(self.lva_dock, self.room_dock)
+        self.tabifyDockWidget(self.termine_dock, self.room_dock)
 
         self.sem_dock = SemesterDock(self)
         self.sem_dock.setObjectName("dock_semester")
         self.addDockWidget(Qt.LeftDockWidgetArea, self.sem_dock)
-        self.tabifyDockWidget(self.lva_dock, self.sem_dock)
+        self.tabifyDockWidget(self.termine_dock, self.sem_dock)
 
-        self.lva_dock.raise_()  # default tab
+        self.termine_dock.raise_()  # default tab
 
     def _wire_signals(self) -> None:
         # Termine
