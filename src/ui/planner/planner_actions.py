@@ -146,3 +146,22 @@ class PlannerActions:
         self.state.ds.save_termine(self.state.termine)
         return True
 
+    def unassign_termin(self, termin_id: str) -> bool:
+        t = next((x for x in self.state.termine if x.id == termin_id), None)
+        if not t:
+            return False
+
+        # Termin ist frozen -> wir erstellen eine neue Instanz
+        new_t = replace(t, datum=None, zeit=None)
+
+        # optional: raum auch leeren, falls du willst:
+        # new_t = replace(new_t, raum_id="")
+
+        self.state.termine = [new_t if x.id == termin_id else x for x in self.state.termine]
+
+        if hasattr(self.state, "termin_map"):
+            self.state.termin_map[termin_id] = new_t
+
+        self.state.ds.save_termine(self.state.termine)
+        return True
+

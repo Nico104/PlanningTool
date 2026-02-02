@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget
 
 from src.services.dataService import DataService
 
-from ..docks import TermineDock, LVADock, RoomDock, SemesterDock
+from ..docks import TermineDock, LVADock, RoomDock, SemesterDock, DataEditorDock
 from .actions import build_menus, attach_settings_handler
 from .crud_handlers import CrudHandlers
 from .layout_manager import LayoutManager
@@ -19,7 +19,9 @@ class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path):
         super().__init__()
         self.setWindowTitle("Planungstool")
+        self.data_dir = data_dir
         self.ds = DataService(data_dir)
+        
 
         # self.setCentralWidget(QWidget())
 
@@ -55,7 +57,7 @@ class MainWindow(QMainWindow):
             QMainWindow.GroupedDragging
         )
 
-    def _setup_docks(self) -> None:
+    def _setup_docks_old(self) -> None:
         # Planner
         # self.planner = PlannerDock(self, self.ds, on_data_changed=self.refresh_docks)
         # self.planner.setObjectName("dock_planner")
@@ -70,39 +72,62 @@ class MainWindow(QMainWindow):
         
         self.lva_dock = LVADock(self)
         self.lva_dock.setObjectName("dock_lvas")
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.lva_dock)
-        self.tabifyDockWidget(self.termine_dock, self.lva_dock)
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.lva_dock)
 
         self.room_dock = RoomDock(self)
         self.room_dock.setObjectName("dock_rooms")
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.room_dock)
-        self.tabifyDockWidget(self.termine_dock, self.room_dock)
+        self.tabifyDockWidget(self.lva_dock, self.room_dock)
 
         self.sem_dock = SemesterDock(self)
         self.sem_dock.setObjectName("dock_semester")
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.sem_dock)
-        self.tabifyDockWidget(self.termine_dock, self.sem_dock)
+        self.tabifyDockWidget(self.lva_dock, self.sem_dock)
 
         self.termine_dock.raise_()  # default tab
+        
+    def _setup_docks(self) -> None:
+        # Planner
+        self.planner = PlannerWorkspace(self, self.ds, on_data_changed=self.refresh_docks)
+        self.setCentralWidget(self.planner)
+
+        # Termine (bleibt)
+        self.termine_dock = TermineDock(self)
+        self.termine_dock.setObjectName("dock_termine")
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.termine_dock)
+
+        # Data Editor (LVA+Räume+Semester+Freie Tage)
+        self.data_editor_dock = DataEditorDock(self, ds=self.ds, data_dir=self.data_dir, on_data_changed=self.refresh_docks)
+        self.data_editor_dock.setObjectName("dock_data_editor")
+        # self.addDockWidget(Qt.DockWidgetArea, self.data_editor_dock)
+
+        self.tabifyDockWidget(self.termine_dock, self.data_editor_dock)
+        self.termine_dock.raise_()
 
     def _wire_signals(self) -> None:
         # Termine
         self.termine_dock.termin_double_clicked.connect(self.crud.edit_termin_by_id)
+        
+        self.termine_dock.termin_unassign_requested.connect(self._on_unassign_termin)
 
         # LVA dock (nur Kontextmenü)
-        self.lva_dock.edit_clicked.connect(self.crud.edit_lva)
-        self.lva_dock.delete_clicked.connect(self.crud.del_lva)
+        # self.lva_dock.edit_clicked.connect(self.crud.edit_lva)
+        # self.lva_dock.delete_clicked.connect(self.crud.del_lva)
 
         # Room dock
-        self.room_dock.edit_clicked.connect(self.crud.edit_room)
-        self.room_dock.delete_clicked.connect(self.crud.del_room)
+        # self.room_dock.edit_clicked.connect(self.crud.edit_room)
+        # self.room_dock.delete_clicked.connect(self.crud.del_room)
 
         # Semester dock
-        self.sem_dock.edit_clicked.connect(self.crud.edit_semester)
-        self.sem_dock.delete_clicked.connect(self.crud.del_semester)
+        # self.sem_dock.edit_clicked.connect(self.crud.edit_semester)
+        # self.sem_dock.delete_clicked.connect(self.crud.del_semester)
     # ---------- refresh
+    
+    def _on_unassign_termin(self, tid: str):
+        if self.planner.actions.unassign_termin(tid):
+            self.refresh_docks()
+            self.planner.refresh()
 
-    def refresh_docks(self) -> None:
+
+    def refresh_docks_old(self) -> None:
         sem, room, q = self.planner.current_filters()
         terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
 
@@ -110,3 +135,13 @@ class MainWindow(QMainWindow):
         self.lva_dock.set_rows(self.ds.load_lvas())
         self.room_dock.set_rows(self.ds.load_raeume())
         self.sem_dock.set_rows(self.ds.load_semester())
+        
+    def refresh_docks(self) -> None:
+        sem, room, q = self.planner.current_filters()
+        terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
+
+        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
+
+        # Data editor dock refresh
+        self.data_editor_dock.refresh_all()
+
