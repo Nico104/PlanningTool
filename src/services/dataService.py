@@ -72,7 +72,9 @@ class DataService:
         for x in raw:
             # optional fields
             z = x.get("zeit")          # may be missing or None
-            g = x.get("gruppe") or {}  # may be missing
+            # g = x.get("gruppe") or {}  # may be missing
+            g = x.get("gruppe")
+
 
             # datum optional
             d_raw = x.get("datum")
@@ -100,7 +102,15 @@ class DataService:
                 datum=datum,
                 zeit=zeit,
                 raum_id=x.get("raum_id", ""),
-                gruppe=Gruppe(name=g.get("name", "-"), groesse=int(g.get("groesse", 0) or 0)),
+                # gruppe=Gruppe(name=g.get("name", "-"), groesse=int(g.get("groesse", 0) or 0)),
+                gruppe=(
+                    Gruppe(
+                        name=g.get("name", "-"),
+                        groesse=int(g.get("groesse", 0)),
+                    )
+                    if g is not None
+                    else None
+                ),
                 anwesenheitspflicht=bool(x.get("anwesenheitspflicht", False)),
                 notiz=x.get("notiz", ""),
             ))
@@ -146,7 +156,15 @@ class DataService:
                 "datum": self._fmt_date(t.datum) if t.datum is not None else None,
                 "zeit": {"von": self._fmt_time(t.zeit.von) if t.zeit and t.zeit.von else None, "bis": self._fmt_time(t.zeit.bis) if t.zeit and t.zeit.bis else None} if t.zeit else None,
                 "raum_id": t.raum_id,
-                "gruppe": {"name": t.gruppe.name, "groesse": t.gruppe.groesse},
+                # "gruppe": {"name": t.gruppe.name, "groesse": t.gruppe.groesse},
+                "gruppe": (
+                    {
+                        "name": t.gruppe.name,
+                        "groesse": t.gruppe.groesse,
+                    }
+                    if t.gruppe is not None
+                    else None
+                ),
                 "anwesenheitspflicht": t.anwesenheitspflicht,
                 "notiz": t.notiz
             } for t in termine]

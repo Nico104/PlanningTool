@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, time
 from typing import List, Optional
 
-from PySide6.QtCore import QTime
+from PySide6.QtCore import QTime, QDate
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QFormLayout, QLineEdit, QDialog, QDialogButtonBox, QMessageBox,
     QComboBox, QDateEdit, QTimeEdit, QCheckBox, QSpinBox, QTextEdit
@@ -39,8 +39,19 @@ class TerminDialog(QDialog):
             self.sem_cb.addItem(f"{s.id} – {s.name}", s.id)
 
         self.typ_le = QLineEdit(termin.typ if termin else "VO")
+        
         self.date_de = QDateEdit()
         self.date_de.setCalendarPopup(True)
+
+        # ✅ Unassigned Anzeige statt 01/01/2000
+        self._unassigned_qdate = date.today()
+        
+        self.date_de.setMinimumDate(self._unassigned_qdate)
+        self.date_de.setSpecialValueText("Kein Datum zugewiesen")
+        self.date_de.setDate(self._unassigned_qdate)
+
+        
+        
 
         self.time_from = QTimeEdit()
         self.time_to = QTimeEdit()
@@ -49,10 +60,10 @@ class TerminDialog(QDialog):
         for r in raeume:
             self.raum_cb.addItem(f"{r.id} – {r.name}", r.id)
 
-        self.grp_name = QLineEdit(termin.gruppe.name if termin else "-")
+        self.grp_name = QLineEdit((termin.gruppe.name if (termin and termin.gruppe) else ""))
         self.grp_size = QSpinBox()
         self.grp_size.setRange(0, 2000)
-        self.grp_size.setValue(termin.gruppe.groesse if termin else 0)
+        self.grp_size.setValue((termin.gruppe.groesse if (termin and termin.gruppe) else 0))
 
         self.ap_cb = QCheckBox("Anwesenheitspflicht")
         self.ap_cb.setChecked(bool(termin.anwesenheitspflicht) if termin else False)
@@ -62,9 +73,31 @@ class TerminDialog(QDialog):
         self.note_te.setPlainText(termin.notiz if termin else "")
 
         if termin:
-            self.date_de.setDate(date_to_qdate(termin.datum))
-            self.time_from.setTime(QTime(termin.zeit.von.hour, termin.zeit.von.minute))
-            self.time_to.setTime(QTime(termin.zeit.bis.hour, termin.zeit.bis.minute))
+            # self.date_de.setDate(date_to_qdate(termin.datum))
+            if termin and termin.datum:
+                self.date_de.setDate(date_to_qdate(termin.datum))
+            else:
+                # ✅ zeigt "Kein Datum zugewiesen"
+                self.date_de.setDate(self._unassigned_qdate)
+                self.date_de.setToolTip("Kein Datum zugewiesen")
+
+
+            # self.time_from.setTime(QTime(termin.zeit.von.hour, termin.zeit.von.minute))
+            # self.time_to.setTime(QTime(termin.zeit.bis.hour, termin.zeit.bis.minute))
+            if termin.zeit and termin.zeit.von and termin.zeit.bis:
+                self.time_from.setTime(QTime(termin.zeit.von.hour, termin.zeit.von.minute))
+                self.time_to.setTime(QTime(termin.zeit.bis.hour, termin.zeit.bis.minute))
+            else:
+                # unassigned -> default times (won't be used unless a date is set)
+                self.time_from.setTime(QTime(8, 0))
+                self.time_to.setTime(QTime(9, 30))
+
+            # ✅ Zeiten deaktivieren, wenn Datum unassigned ist
+            has_date = bool(termin and termin.datum)
+            self.time_from.setEnabled(has_date)
+            self.time_to.setEnabled(has_date)
+
+
             self._set_cb(self.lva_cb, termin.lva_id)
             self._set_cb(self.sem_cb, termin.semester_id)
             self._set_cb(self.raum_cb, termin.raum_id)
@@ -73,6 +106,18 @@ class TerminDialog(QDialog):
             self.date_de.setDate(date_to_qdate(today))
             self.time_from.setTime(QTime(8, 0))
             self.time_to.setTime(QTime(9, 30))
+
+        def _sync_time_enabled():
+            has_date = self.date_de.date() != self._unassigned_qdate
+            self.time_from.setEnabled(has_date)
+            self.time_to.setEnabled(has_date)
+
+        # bei jeder Datum-Änderung aktualisieren
+        self.date_de.dateChanged.connect(lambda *_: _sync_time_enabled())
+
+        # einmal initial setzen
+        _sync_time_enabled()
+
 
         form.addRow("Termin-ID:", self.id_le)
         form.addRow("LVA:", self.lva_cb)
@@ -98,6 +143,44 @@ class TerminDialog(QDialog):
                 cb.setCurrentIndex(i)
                 return
 
+    # def _accept(self):
+    #     tid = self.id_le.text().strip()
+    #     if not tid:
+    #         QMessageBox.warning(self, "Fehler", "Termin-ID ist Pflicht.")
+    #         return
+
+    #     lva_id = str(self.lva_cb.currentData())
+    #     sem_id = str(self.sem_cb.currentData())
+    #     raum_id = str(self.raum_cb.currentData())
+    #     typ = self.typ_le.text().strip().upper()
+    #     d = qdate_to_date(self.date_de.date())
+
+    #     tf = self.time_from.time()
+    #     tt = self.time_to.time()
+    #     von = time(tf.hour(), tf.minute())
+    #     bis = time(tt.hour(), tt.minute())
+    #     if bis <= von:
+    #         QMessageBox.warning(self, "Fehler", "Endzeit muss nach Startzeit liegen.")
+    #         return
+
+    #     gname = self.grp_name.text().strip() or "-"
+    #     gsize = int(self.grp_size.value())
+    #     if gname == "-":
+    #         gsize = 0
+
+    #     self._result = Termin(
+    #         id=tid,
+    #         lva_id=lva_id,
+    #         semester_id=sem_id,
+    #         typ=typ,
+    #         datum=d,
+    #         zeit=Zeitfenster(von=von, bis=bis),
+    #         raum_id=raum_id,
+    #         gruppe=Gruppe(name=gname, groesse=gsize),
+    #         anwesenheitspflicht=bool(self.ap_cb.isChecked()),
+    #         notiz=self.note_te.toPlainText().strip(),
+    #     )
+    #     self.accept()
     def _accept(self):
         tid = self.id_le.text().strip()
         if not tid:
@@ -108,20 +191,33 @@ class TerminDialog(QDialog):
         sem_id = str(self.sem_cb.currentData())
         raum_id = str(self.raum_cb.currentData())
         typ = self.typ_le.text().strip().upper()
-        d = qdate_to_date(self.date_de.date())
 
-        tf = self.time_from.time()
-        tt = self.time_to.time()
-        von = time(tf.hour(), tf.minute())
-        bis = time(tt.hour(), tt.minute())
-        if bis <= von:
-            QMessageBox.warning(self, "Fehler", "Endzeit muss nach Startzeit liegen.")
-            return
+        # ✅ Datum: erlaubt "unassigned"
+        # qd = self.date_de.date()
+        # d = qdate_to_date(qd) if qd.isValid() else None
+        
+        qd = self.date_de.date()
+        d = None if qd == self._unassigned_qdate else qdate_to_date(qd)
 
-        gname = self.grp_name.text().strip() or "-"
+
+        # ✅ Zeit: nur erzwingen, wenn Datum gesetzt ist
+        zeit = None
+        if d is not None:
+            tf = self.time_from.time()
+            tt = self.time_to.time()
+            von = time(tf.hour(), tf.minute())
+            bis = time(tt.hour(), tt.minute())
+            if bis <= von:
+                QMessageBox.warning(self, "Fehler", "Endzeit muss nach Startzeit liegen.")
+                return
+            zeit = Zeitfenster(von=von, bis=bis)
+
+        # ✅ Gruppe: null, wenn nichts eingegeben (statt "-" und 0)
+        gname = self.grp_name.text().strip()
         gsize = int(self.grp_size.value())
-        if gname == "-":
-            gsize = 0
+        gruppe = None
+        if gname or gsize > 0:
+            gruppe = Gruppe(name=gname, groesse=gsize)
 
         self._result = Termin(
             id=tid,
@@ -129,13 +225,14 @@ class TerminDialog(QDialog):
             semester_id=sem_id,
             typ=typ,
             datum=d,
-            zeit=Zeitfenster(von=von, bis=bis),
+            zeit=zeit,
             raum_id=raum_id,
-            gruppe=Gruppe(name=gname, groesse=gsize),
+            gruppe=gruppe,
             anwesenheitspflicht=bool(self.ap_cb.isChecked()),
             notiz=self.note_te.toPlainText().strip(),
         )
         self.accept()
+
 
     @property
     def result(self) -> Optional[Termin]:

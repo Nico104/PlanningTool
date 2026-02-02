@@ -18,8 +18,13 @@ def qdate_to_date(qd: QDate) -> date:
     return date(qd.year(), qd.month(), qd.day())
 
 
-def date_to_qdate(d: date) -> QDate:
+# def date_to_qdate(d: date) -> QDate:
+#     return QDate(d.year, d.month, d.day)
+def date_to_qdate(d: date | None) -> QDate:
+    if d is None:
+        return QDate()  # invalid / empty date
     return QDate(d.year, d.month, d.day)
+
 
 
 def monday_of(d: date) -> date:

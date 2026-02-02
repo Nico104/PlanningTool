@@ -58,6 +58,6 @@ class Termin:
     datum: Optional[date]
     zeit: Optional[Zeitfenster]
     raum_id: str
-    gruppe: Gruppe
+    gruppe: Optional[Gruppe]
     anwesenheitspflicht: bool
     notiz: str = ""

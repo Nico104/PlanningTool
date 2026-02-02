@@ -8,10 +8,7 @@
       "datum": null,
       "zeit": null,
       "raum_id": "F01",
-      "gruppe": {
-        "name": "-",
-        "groesse": 0
-      },
+      "gruppe": null,
       "anwesenheitspflicht": false,
       "notiz": ""
     },
@@ -50,8 +47,11 @@
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": null,
-      "zeit": null,
+      "datum": "2026-02-18",
+      "zeit": {
+        "von": "13:00",
+        "bis": "13:30"
+      },
       "raum_id": "E17",
       "gruppe": {
         "name": "-",
