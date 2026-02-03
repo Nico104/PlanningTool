@@ -147,29 +147,6 @@ class TerminCard(QFrame):
         drag.exec(Qt.CopyAction)
 
 
-    # def mouseMoveEvent_old(self, e: QMouseEvent) -> None:
-        # if not (e.buttons() & Qt.LeftButton):
-        #     return
-        # if self._press_pos is None:
-        #     return
-
-        # if (e.pos() - self._press_pos).manhattanLength() < 8:
-        #     return
-
-        # drag = QDrag(self)
-        # mime = QMimeData()
-        # mime.setText(self.termin_id)
-        # mime.setData(MIME_TERMIN_ID, self.termin_id.encode("utf-8"))
-        # drag.setMimeData(mime)
-
-        # pm = QPixmap(self.size())
-        # pm.fill(Qt.transparent)
-        # self.render(pm)
-        # drag.setPixmap(pm)
-        # drag.setHotSpot(self._press_pos)
-
-        # drag.exec(Qt.CopyAction)
-
     # ---------- interactions ----------
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
         self.double_clicked.emit(self.termin_id)

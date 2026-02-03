@@ -107,45 +107,6 @@ class PlannerActions:
         self.state.ds.save_termine(self.state.termine)
         return True
 
-    
-    def move_termin_old(self, termin_id: str, new_date: date, new_start: time) -> bool:
-        """
-        Move termin to new_date + new_start.
-        - keeps duration (bis - von)
-        - works with frozen dataclasses (creates new instances)
-        - keeps Zeitfenster values as datetime.time (DataService needs strftime())
-        """
-        # find termin from list (most robust)
-        t = next((x for x in self.state.termine if x.id == termin_id), None)
-        if not t:
-            return False
-
-        # duration
-        try:
-            dur = datetime.combine(date(2000, 1, 1), t.zeit.bis) - datetime.combine(date(2000, 1, 1), t.zeit.von)
-            if dur.total_seconds() <= 0:
-                dur = timedelta(minutes=30)
-        except Exception:
-            dur = timedelta(minutes=30)
-
-        new_end_dt = datetime.combine(new_date, new_start) + dur
-        new_end = new_end_dt.time()
-
-        # create new frozen objects
-        new_zeit = replace(t.zeit, von=new_start, bis=new_end)
-        new_t = replace(t, datum=new_date, zeit=new_zeit)
-
-        # replace in list
-        self.state.termine = [new_t if x.id == termin_id else x for x in self.state.termine]
-
-        # update termin_map if you have it
-        if hasattr(self.state, "termin_map"):
-            self.state.termin_map[termin_id] = new_t
-
-        # persist using DataService (you DO have save_termine)
-        self.state.ds.save_termine(self.state.termine)
-        return True
-
     def unassign_termin(self, termin_id: str) -> bool:
         t = next((x for x in self.state.termine if x.id == termin_id), None)
         if not t:

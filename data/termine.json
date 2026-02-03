@@ -5,11 +5,8 @@
       "lva_id": "123.456",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-03",
-      "zeit": {
-        "von": "12:00",
-        "bis": "12:30"
-      },
+      "datum": null,
+      "zeit": null,
       "raum_id": "F01",
       "gruppe": null,
       "anwesenheitspflicht": false,
@@ -20,10 +17,10 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-02",
+      "datum": "2026-02-04",
       "zeit": {
-        "von": "10:00",
-        "bis": "11:30"
+        "von": "10:30",
+        "bis": "12:00"
       },
       "raum_id": "E17",
       "gruppe": null,
@@ -35,10 +32,10 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "UE",
-      "datum": "2026-02-02",
+      "datum": "2026-02-06",
       "zeit": {
-        "von": "14:30",
-        "bis": "15:00"
+        "von": "13:00",
+        "bis": "15:30"
       },
       "raum_id": "F01",
       "gruppe": null,
@@ -68,17 +65,14 @@
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "LU",
-      "datum": "2026-02-04",
-      "zeit": {
-        "von": "17:30",
-        "bis": "18:00"
-      },
+      "datum": null,
+      "zeit": null,
       "raum_id": "LAB3",
       "gruppe": {
         "name": "B",
         "groesse": 20
       },
-      "anwesenheitspflicht": false,
+      "anwesenheitspflicht": true,
       "notiz": ""
     }
   ]

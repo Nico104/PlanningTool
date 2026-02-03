@@ -248,3 +248,80 @@ QToolTip {
   padding: 6px 8px;
   border-radius: 8px;
 }
+
+
+
+
+/* ---------- ComboBox main control ---------- */
+QComboBox {
+    min-height: 32px;
+    padding: 6px 28px 6px 10px;   /* room for arrow */
+    border: 1px solid rgba(255,255,255,40);
+    border-radius: 8px;
+    background: rgba(255,255,255,16);
+}
+
+QComboBox:hover {
+    border: 1px solid rgba(255,255,255,70);
+}
+
+QComboBox:focus {
+    border: 1px solid rgba(90,140,255,180);
+}
+
+/* Arrow button area */
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    border: none;
+}
+
+QComboBox::down-arrow {
+    width: 10px;
+    height: 10px;
+}
+
+/* ========================================= */
+/* FORCE popup selection color (NO brown)    */
+/* ========================================= */
+
+QComboBox QAbstractItemView {
+    background: #1e1e1e;
+    border: 1px solid #3a3a3a;
+    border-radius: 8px;
+    padding: 4px;
+    outline: 0;
+}
+
+/* normal row */
+QComboBox QAbstractItemView::item {
+    padding: 6px 10px;
+    margin: 2px;
+    border-radius: 6px;
+    color: black;
+}
+
+/* hover */
+QComboBox QAbstractItemView::item:hover {
+    background: rgba(255, 255, 255, 20%);
+}
+
+/* ⭐ SELECTED (this kills brown forever) */
+QComboBox QAbstractItemView::item:selected {
+    background: #5A8CFF;      /* choose your color */
+    color: black;
+}
+
+/* selected + hover */
+QComboBox QAbstractItemView::item:selected:hover {
+    background: #6EA0FF;
+    color: black;
+}
+
+/* keyboard focus row (optional) */
+QComboBox QAbstractItemView::item:!active:selected {
+    background: #5A8CFF;
+    color: black;
+}
+

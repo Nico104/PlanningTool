@@ -87,6 +87,9 @@ class PlannerWeekView:
 
         h.setStretchLastSection(False)
         v.setSectionResizeMode(QHeaderView.Stretch)
+        
+        self.week_table.verticalHeader().setDefaultSectionSize(26)
+
 
     def refresh(self, filtered_termine: List[Termin]) -> None:
         week_mo = monday_of(qdate_to_date(self.week_from.date()))
@@ -124,7 +127,10 @@ class PlannerWeekView:
         for r, tt in enumerate(slots):
             it = QTableWidgetItem(f"{tt.hour:02d}:{tt.minute:02d}")
             it.setFlags(it.flags() & ~Qt.ItemIsEditable)
-            it.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+            # IMPORTANT: grid-line style (Option 2)
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignTop)
+
             self.week_table.setItem(r, 0, it)
 
         # clear all spans first (important when refreshing)

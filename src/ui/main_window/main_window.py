@@ -101,15 +101,6 @@ class MainWindow(QMainWindow):
             self.refresh_docks()
             self.planner.refresh()
 
-
-    def refresh_docks_old(self) -> None:
-        sem, room, q = self.planner.current_filters()
-        terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
-
-        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
-        self.lva_dock.set_rows(self.ds.load_lvas())
-        self.room_dock.set_rows(self.ds.load_raeume())
-        self.sem_dock.set_rows(self.ds.load_semester())
         
     def refresh_docks(self) -> None:
         sem, room, q = self.planner.current_filters()

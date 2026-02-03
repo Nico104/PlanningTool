@@ -1,0 +1,220 @@
+from __future__ import annotations
+
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QFontMetrics
+from PySide6.QtWidgets import QComboBox, QStyledItemDelegate
+from PySide6.QtWidgets import QFrame
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QPalette, QColor
+
+from PySide6.QtWidgets import QListView
+
+
+class _TightDelegate(QStyledItemDelegate):
+    """Slightly tighter row height + clean spacing in popup."""
+    def sizeHint(self, option, index):
+        sz = super().sizeHint(option, index)
+        # tighten vertical space a bit
+        sz.setHeight(max(24, sz.height() - 2))
+        return sz
+
+
+class TightComboBox(QComboBox):
+    """
+    Compact, modern-feeling combobox:
+    - fixed compact height
+    - no mouse-wheel accidental changes
+    - frameless popup (no ugly second window shadow)
+    - popup width fits longest item
+    """
+
+    def __init__(self, parent=None, *, compact_height: int = 32, min_popup_width: int = 180):
+        super().__init__(parent)
+        self._compact_height = compact_height
+        self._min_popup_width = min_popup_width
+
+        # Keep it tight
+        self.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+        self.setMinimumHeight(self._compact_height)
+
+        # Nicer popup behavior / look
+        self.setItemDelegate(_TightDelegate(self))
+        self._apply_popup_window_flags()
+        
+        self.setView(QListView())
+
+
+    def _fit_popup_height(self):
+        v = self.view()
+        n = min(self.count(), self.maxVisibleItems())
+        if n <= 0:
+            return
+
+        row_h = v.sizeHintForRow(0)
+        if row_h <= 0:
+            row_h = 28
+
+        # add a little extra for borders/padding so it never clips
+        extra = 12
+        v.setFixedHeight(row_h * n + extra)
+
+
+    def _fit_popup_height_old(self):
+        v = self.view()
+        n = min(self.count(), self.maxVisibleItems())
+        if n <= 0:
+            return
+
+        row_h = v.sizeHintForRow(0)
+        if row_h <= 0:
+            row_h = 24
+
+        # Total rows + a tiny safety pixel so it doesn't clip
+        total = row_h * n + 2
+        v.setFixedHeight(total)
+
+
+
+    def _apply_popup_window_flags(self):
+        v = self.view()
+        w = v.window()
+
+        w.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
+
+        # ✅ kill the white box behind rounded corners
+        w.setAttribute(Qt.WA_TranslucentBackground, True)
+        w.setStyleSheet("background: transparent;")   # only window, not the view
+
+        v.setFrameShape(QFrame.NoFrame)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setViewportMargins(0, 0, 0, 0)
+
+        v.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        v.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+
+
+
+    def wheelEvent(self, event):
+        # Prevent accidental changes while scrolling
+        event.ignore()
+
+    def showPopup(self):
+        self._apply_popup_window_flags()
+        self._sync_popup_styling()
+        self._fit_popup_width()
+        self._fit_popup_height()   # ✅ add this
+        super().showPopup()
+        # w = self.view().window()
+        # w.setStyleSheet("background: magenta;")
+
+
+    def _fit_popup_width(self):
+        fm = QFontMetrics(self.font())
+
+        # Measure text widths (include a bit of padding + arrow area)
+        longest = 0
+        for i in range(self.count()):
+            t = self.itemText(i)
+            longest = max(longest, fm.horizontalAdvance(t))
+
+        # Add padding, scrollbar, margins, arrow space
+        # (numbers chosen to look good on Fusion/Windows/Linux)
+        padding = 52
+        target = longest + padding
+        target = max(self._min_popup_width, target)
+
+        self.view().setMinimumWidth(target)
+        self.view().setFixedWidth(target)
+
+    def sizeHint(self) -> QSize:
+        s = super().sizeHint()
+        s.setHeight(self._compact_height)
+        return s
+
+    def _sync_popup_styling(self):
+        v = self.view()
+        w = v.window()
+
+
+
+        # --- Style the POPUP WINDOW (this removes the white behind) ---
+        w.setAttribute(Qt.WA_StyledBackground, True)
+        w.setStyleSheet("""
+            /* This is the container behind the list */
+            background: #f8f8f8;
+            border: 1px solid #4a4a4a;
+            border-radius: 1px;
+        """)
+
+        # Remove the container padding that causes edges to show through
+        lay = w.layout()
+        if lay:
+            lay.setContentsMargins(0, 0, 0, 0)
+            lay.setSpacing(0)
+
+        # --- Make the VIEW transparent so the window provides the rounded background ---
+        v.setStyleSheet("""
+            QAbstractItemView {
+                background: transparent;
+                border: none;
+                outline: 0;
+                padding: 6px; /* inner padding inside the rounded window */
+                selection-background-color: #4f86ff;
+                selection-color: white;
+            }
+
+            QAbstractItemView::item {
+                padding: 7px 12px;
+                margin: 2px;
+                border-radius: 4px;
+                color: black;
+            }
+
+            QAbstractItemView::item:hover {
+                background: rgba(255,255,255,14%);
+            }
+
+            QAbstractItemView::item:selected,
+            QAbstractItemView::item:!active:selected {
+                background: #4f86ff;
+                color: white;
+            }
+
+            /* slim scrollbar */
+            QScrollBar:vertical {
+                width: 10px;
+                background: transparent;
+                margin: 6px 2px 6px 2px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255,255,255,35%);
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
+        """)
+
+
+
+
+    def _sync_popup_styling_old(self):
+        v = self.view()
+        w = v.window()
+
+        # 1) Re-apply the *application* stylesheet to the popup window
+        app = QApplication.instance()
+        if app:
+            ss = app.styleSheet()
+            if ss:
+                w.setStyleSheet(ss)
+                v.setStyleSheet(ss)
+                v.viewport().setStyleSheet(ss)
+
+        # 2) Force highlight colors (this kills the brown 100%)
+        # pal = v.palette()
+        # pal.setColor(QPalette.Highlight, QColor("#ffffff"))          # selection bg
+        # pal.setColor(QPalette.HighlightedText, QColor("black"))    # selection text
+        # v.setPalette(pal)
+        # v.viewport().setPalette(pal)
+        # w.setPalette(pal)

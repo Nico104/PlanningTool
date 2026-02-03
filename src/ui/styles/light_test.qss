@@ -1,43 +1,270 @@
-/* ---- TerminCard ---- */
 QFrame#TerminCard {
   background: #ffffff;
-  border: 1px solid #83111111;      /* dünn + schwarz */
-  border-radius: 4px;            /* runde Ecken */
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
 }
 
 QFrame#TerminCard:hover {
-  background: #ffffff;
-  border: 1px solid #000000;      /* hover: etwas “crisper” */
+  border: 1px solid #d6d6d6;
+  background: #fcfcfc;
 }
 
-
-/* Text */
 QLabel#CardTitle {
-  background: transparent;
   color: #111111;
-  font-weight: 600;
+  font-weight: 650;
   font-size: 13px;
 }
 
 QLabel#CardSub {
-  background: transparent;
-  color: #666666;
+  color: #6b6b6b;
   font-size: 11px;
 }
 
-/* Chips (klein, pill-shaped) */
 QLabel[chip="true"] {
-  background: #f5f5f5;
-  border: 1px solid #d9d9d9;
+  background: #f6f6f6;
+  border: 1px solid #e4e4e4;
   border-radius: 999px;
   padding: 2px 8px;
   color: #111111;
   font-size: 10px;
 }
 
-/* Optional: AP auffälliger */
 QLabel#ChipAP {
   background: #111111;
   border: 1px solid #111111;
-  color: white;
+  color: #ffffff;
 }
+
+
+
+/* Time grid labels */
+QTableWidget::item:first-column {
+  color: #2a2a2a;
+  padding-right: 6px;
+  font-size: 11px;
+}
+
+
+
+
+/* =========================================================
+   Header / Control Bar — subtle & compact
+   ========================================================= */
+
+QWidget#HeaderBar {
+  background: #ffffff;
+  border: 1px solid #ededed;
+  border-radius: 4px;
+}
+
+/* unify height + typography */
+QWidget#HeaderBar QComboBox,
+QWidget#HeaderBar QDateEdit,
+QWidget#HeaderBar QLineEdit,
+QWidget#HeaderBar QPushButton {
+  min-height: 28px;          /* <- less tall */
+  font-size: 12px;
+}
+
+/* --- Inputs --- */
+QLineEdit#HeaderSearch,
+QComboBox#HeaderCombo,
+QDateEdit#DateEdit {
+  background: #fafafa;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: #111111;
+}
+
+QLineEdit#HeaderSearch:hover,
+QComboBox#HeaderCombo:hover,
+QDateEdit#DateEdit:hover {
+  background: #f6f6f6;
+  border: 1px solid #dcdcdc;
+}
+
+QLineEdit#HeaderSearch:focus,
+QComboBox#HeaderCombo:focus,
+QDateEdit#DateEdit:focus {
+  background: #ffffff;
+  border: 1px solid #111111;
+}
+
+/* placeholder */
+QLineEdit#HeaderSearch::placeholder {
+  color: #9a9a9a;
+}
+
+/* --- ComboBox arrow (no divider, no rounding) --- */
+QComboBox#HeaderCombo {
+  padding-right: 24px;
+}
+
+QComboBox#HeaderCombo::drop-down {
+  width: 22px;
+  border: none;
+  background: transparent;
+}
+
+QComboBox#HeaderCombo::down-arrow {
+  width: 9px;
+  height: 9px;
+}
+
+/* --- DateEdit arrow --- */
+QDateEdit#DateEdit::drop-down {
+  width: 22px;
+  border: none;
+  background: transparent;
+}
+
+QDateEdit#DateEdit::down-arrow {
+  width: 9px;
+  height: 9px;
+}
+
+/* --- Buttons (very quiet) --- */
+QPushButton {
+  background: #f7f7f7;
+  border: 1px solid #e5e5e5;
+  border-radius: 4px;
+  padding: 5px 10px;
+  color: #111111;
+}
+
+QPushButton:hover {
+  background: #f1f1f1;
+  border: 1px solid #dcdcdc;
+}
+
+QPushButton:pressed {
+  background: #ebebeb;
+}
+
+/* Nav buttons < > */
+QPushButton#NavButton {
+  min-width: 28px;
+  max-width: 28px;
+  padding: 0px;
+  font-weight: 600;
+}
+
+/* Secondary button (Refresh) */
+QPushButton#SecondaryButton {
+  background: #f7f7f7;
+}
+
+/* Primary button — still visible, but not chunky */
+QPushButton#PrimaryButton {
+  background: #111111;
+  border: 1px solid #111111;
+  color: #ffffff;
+  font-weight: 600;
+  padding: 5px 12px;
+}
+
+QPushButton#PrimaryButton:hover {
+  background: #1a1a1a;
+}
+
+QPushButton#PrimaryButton:pressed {
+  background: #0d0d0d;
+}
+
+
+
+/* =========================================================
+   Calendar popup (QDateEdit calendar)
+   ========================================================= */
+
+QCalendarWidget QWidget {
+  background: #ffffff;
+  color: #111111;
+}
+
+QCalendarWidget {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 12px;
+}
+
+QCalendarWidget QToolButton {
+  background: #f5f5f5;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: #111;
+}
+
+QCalendarWidget QToolButton:hover {
+  background: #eeeeee;
+}
+
+QCalendarWidget QMenu {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+}
+
+QCalendarWidget QAbstractItemView {
+  selection-background-color: #111111;
+  selection-color: #ffffff;
+  background: #ffffff;
+  border: none;
+  outline: 0;
+}
+
+QCalendarWidget QAbstractItemView:disabled {
+  color: #b9b9b9;
+}
+
+
+
+
+/* =========================================================
+   Tables (Day/Week planner)
+   ========================================================= */
+
+QTableWidget {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 12px;
+  gridline-color: #ededed;
+  selection-background-color: #111111;
+  selection-color: #ffffff;
+  outline: 0;
+}
+
+QHeaderView::section {
+  background: #fafafa;
+  border: none;
+  border-bottom: 1px solid #e7e7e7;
+  padding: 8px 10px;
+  color: #111;
+  font-weight: 600;
+}
+
+QTableWidget::item {
+  padding: 6px;
+  border: none;
+}
+
+/* alternating row is already enabled in your code */
+QTableWidget::item:alternate {
+  background: #fcfcfc;
+}
+
+
+/* Prevent "black selection" look */
+QTableWidget::item:selected {
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid black;
+}
+
+QTableWidget::item:focus {
+  outline: none;
+}
+
+
