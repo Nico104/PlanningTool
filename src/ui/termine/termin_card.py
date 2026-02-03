@@ -131,15 +131,22 @@ class TerminCard(QFrame):
         try:
             p.setRenderHint(QPainter.Antialiasing, True)
 
-            radius = 4  # muss zu deinem QSS border-radius passen
+            scale = 0.6  # 👈 smaller (0.5–0.9 are typical)
+
+            # keep it centered
+            p.translate(pm.width() * (1 - scale) / 2,
+                        pm.height() * (1 - scale) / 2)
+            p.scale(scale, scale)
+
+            radius = 4
             path = QPainterPath()
             path.addRoundedRect(QRectF(0, 0, pm.width(), pm.height()), radius, radius)
             p.setClipPath(path)
 
-            # WICHTIG: targetOffset explizit angeben (PySide6 Overload-Fix)
             self.render(p, QPoint(0, 0))
         finally:
             p.end()
+
 
         drag.setPixmap(pm)
         drag.setHotSpot(self._press_pos)

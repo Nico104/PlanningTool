@@ -76,30 +76,12 @@ class TermineDock(QDockWidget):
         header = QWidget(self)
         header.setObjectName("HeaderBar")
         root = QVBoxLayout(header)
-        root.setContentsMargins(6, 6, 6, 6)
+        root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(6)
 
-        # ---- Filter bar ----
+        # ---- Header bar ----
         bar = QHBoxLayout()
         bar.setSpacing(8)
-
-        # bar.addWidget(QLabel("LVA:"))
-        self.cb_lva = TightComboBox()
-        self.cb_lva.setToolTip("LVA")
-        self.cb_lva.setMinimumWidth(220)
-        self.cb_lva.currentIndexChanged.connect(self._render)
-        bar.addWidget(self.cb_lva, 1)
-
-        # bar.addWidget(QLabel("Typ:"))
-        self.cb_typ = TightComboBox()
-        self.cb_typ.setMinimumWidth(120)
-        self.cb_typ.currentIndexChanged.connect(self._render)
-        bar.addWidget(self.cb_typ, 0)
-
-        self.cb_lva.setObjectName("HeaderCombo")
-        self.cb_typ.setObjectName("HeaderCombo")
-        
-
         root.addLayout(bar)
 
         # ---- Scroll area with cards ----
@@ -134,48 +116,24 @@ class TermineDock(QDockWidget):
         self._lva_map = dict(lva_map)
         self._raum_map = dict(raum_map)
 
-        self._rebuild_filters()
+        # Global filtering is applied by MainWindow before calling set_rows.
+        # Just render the provided rows.
         self._render()
+
+    def set_global_filter_state(self, fs) -> None:
+        """Sync the dock's filter UI from a central FilterState (read-only).
+
+        This updates local comboboxes to reflect global selections but does not
+        emit signals back to the application (blockSignals used).
+        """
+        # TermineDock no longer shows local filter widgets; MainWindow applies
+        # global filters and passes the filtered rows to set_rows().
+        return
 
     # ---------- filters ----------
     def _rebuild_filters(self) -> None:
-        cur_lva = self.cb_lva.currentData()
-        cur_typ = self.cb_typ.currentData()
-
-        self.cb_lva.blockSignals(True)
-        self.cb_typ.blockSignals(True)
-
-        self.cb_lva.clear()
-        self.cb_typ.clear()
-
-        # LVA
-        self.cb_lva.addItem("LVA: Alle", None)
-        lva_ids = sorted({t.lva_id for t in self._all_termine if t.lva_id})
-        for lid in lva_ids:
-            lva = self._lva_map.get(lid)
-            name = lva.name if lva else ""
-            text = f"{lid} – {name}".strip(" –")
-            self.cb_lva.addItem(text, lid)
-
-        # Typ
-        self.cb_typ.addItem("Typ: Alle", None)
-        typs = sorted({t.typ for t in self._all_termine if t.typ})
-        for tp in typs:
-            self.cb_typ.addItem(tp, tp)
-
-        # restore selection
-        if cur_lva is not None:
-            i = self.cb_lva.findData(cur_lva)
-            if i >= 0:
-                self.cb_lva.setCurrentIndex(i)
-
-        if cur_typ is not None:
-            i = self.cb_typ.findData(cur_typ)
-            if i >= 0:
-                self.cb_typ.setCurrentIndex(i)
-
-        self.cb_lva.blockSignals(False)
-        self.cb_typ.blockSignals(False)
+        # No local filters to rebuild; global dock owns filter widgets.
+        return
 
     # ---------- rendering ----------
     def _render(self) -> None:
@@ -186,15 +144,8 @@ class TermineDock(QDockWidget):
             if w:
                 w.deleteLater()
 
-        sel_lva = self.cb_lva.currentData()
-        sel_typ = self.cb_typ.currentData()
-
-        # filter
+        # MainWindow supplies already-filtered termine to set_rows(); render them.
         terms = self._all_termine
-        if sel_lva:
-            terms = [t for t in terms if t.lva_id == sel_lva]
-        if sel_typ:
-            terms = [t for t in terms if t.typ == sel_typ]
 
         # sort: unassigned first, then date/time
         from datetime import date as _date, time as _time

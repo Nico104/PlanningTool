@@ -113,16 +113,53 @@ QComboBox#HeaderCombo::down-arrow {
 }
 
 /* --- DateEdit arrow --- */
+/* --- DateEdit arrow (match HeaderCombo look) --- */
+QDateEdit#DateEdit {
+  padding-right: 24px;               /* space for the drop-down */
+}
+
+/* remove the classic subcontrol divider + make it feel like one field */
 QDateEdit#DateEdit::drop-down {
+  subcontrol-origin: padding;
+  subcontrol-position: top right;
+
   width: 22px;
+  border: none;                      /* <- no vertical divider */
+  background: transparent;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* keep arrow crisp + centered (uses Qt default arrow if you don't provide an image) */
+QDateEdit#DateEdit::down-arrow {
+  width: 9px;
+  height: 9px;
+}
+
+/* make hover/focus behave as one single control (no separate button look) */
+QDateEdit#DateEdit:hover::drop-down {
+  background: transparent;
+}
+
+QDateEdit#DateEdit:focus::drop-down {
+  background: transparent;
+}
+
+/* if spin-buttons ever show up (platform/style dependent), hide them */
+QDateEdit#DateEdit::up-button,
+QDateEdit#DateEdit::down-button {
+  width: 0px;
+  height: 0px;
   border: none;
   background: transparent;
 }
 
 QDateEdit#DateEdit::down-arrow {
-  width: 9px;
-  height: 9px;
+  image: url(":/assets/icons/chevron-down.svg");
+  width: 12px;
+  height: 12px;
 }
+
 
 /* --- Buttons (very quiet) --- */
 QPushButton {
@@ -146,6 +183,7 @@ QPushButton:pressed {
 QPushButton#NavButton {
   min-width: 28px;
   max-width: 28px;
+  min-height: 30px;
   padding: 0px;
   font-weight: 600;
 }
@@ -231,8 +269,7 @@ QTableWidget {
   border: 1px solid #e7e7e7;
   border-radius: 12px;
   gridline-color: #ededed;
-  selection-background-color: #111111;
-  selection-color: #ffffff;
+  /* selection-background-color: #ffffff; */
   outline: 0;
 }
 
@@ -245,25 +282,148 @@ QHeaderView::section {
   font-weight: 600;
 }
 
-QTableWidget::item {
-  padding: 6px;
-  border: none;
-}
-
-/* alternating row is already enabled in your code */
-QTableWidget::item:alternate {
-  background: #fcfcfc;
-}
-
-
 /* Prevent "black selection" look */
 QTableWidget::item:selected {
+  background: #beffffff;
+  color: #000000;
+  border: 1px solid black;
+  font-weight: bold;
+}
+
+
+/* ===== Scrollbars (global) ===== */
+
+QScrollBar:vertical {
+  background: transparent;
+  width: 10px;
+  margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+  background: #d0d0d0;
+  border-radius: 5px;
+  min-height: 30px;
+}
+
+QScrollBar::handle:vertical:hover {
+  background: #bcbcbc;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+  height: 0px;
+  background: none;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+  background: none;
+}
+
+
+/* ----- Horizontal ----- */
+
+QScrollBar:horizontal {
+  background: transparent;
+  height: 10px;
+  margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+  background: #d0d0d0;
+  border-radius: 5px;
+  min-width: 30px;
+}
+
+QScrollBar::handle:horizontal:hover {
+  background: #bcbcbc;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+  width: 0px;
+  background: none;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+  background: none;
+}
+
+/* ─────────────────────────────
+   Termin Dialog (clean light)
+   ───────────────────────────── */
+QDialog#TerminDialog {
+  background: #ffffff;
+}
+
+QDialog#TerminDialog QLabel {
+  color: #111111;
+  font-size: 12px;
+}
+
+QDialog#TerminDialog QLineEdit#Field,
+QDialog#TerminDialog QComboBox#Field,
+QDialog#TerminDialog QDateEdit#Field,
+QDialog#TerminDialog QTimeEdit#Field,
+QDialog#TerminDialog QSpinBox#Field,
+QDialog#TerminDialog QTextEdit#Field {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+  padding: 6px 10px;
+  min-height: 28px;
+  color: #111111;
+}
+
+QDialog#TerminDialog QTextEdit#Field {
+  min-height: 72px;
+  padding-top: 8px;
+}
+
+/* focus state */
+QDialog#TerminDialog QLineEdit#Field:focus,
+QDialog#TerminDialog QComboBox#Field:focus,
+QDialog#TerminDialog QDateEdit#Field:focus,
+QDialog#TerminDialog QTimeEdit#Field:focus,
+QDialog#TerminDialog QSpinBox#Field:focus,
+QDialog#TerminDialog QTextEdit#Field:focus {
+  border: 1px solid #111111;
+}
+
+/* Combo popup */
+QDialog#TerminDialog QComboBox#Field QAbstractItemView {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  outline: 0;
+  selection-background-color: #f6f6f6;
+  selection-color: #111111;
+}
+
+/* Buttons */
+QDialog#TerminDialog QPushButton#PrimaryButton {
+  background: #111111;
+  color: #ffffff;
+  border: 1px solid #111111;
+  border-radius: 10px;
+  padding: 7px 14px;
+  min-width: 90px;
+}
+
+QDialog#TerminDialog QPushButton#PrimaryButton:hover {
+  background: #1a1a1a;
+}
+
+QDialog#TerminDialog QPushButton#SecondaryButton {
   background: #ffffff;
   color: #111111;
-  border: 1px solid black;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+  padding: 7px 14px;
+  min-width: 90px;
 }
 
-QTableWidget::item:focus {
-  outline: none;
+QDialog#TerminDialog QPushButton#SecondaryButton:hover {
+  border: 1px solid #d6d6d6;
+  background: #fcfcfc;
 }
-

@@ -22,7 +22,7 @@ from ..utils.widgets.tight_combobox import TightComboBox
 
 
 class PlannerWorkspace(QWidget):
-    def __init__(self, parent: QWidget, ds: DataService, on_data_changed):
+    def __init__(self, parent: QWidget, ds: DataService, on_data_changed, global_filter_dock=None):
         super().__init__(parent)
         self._emit_enabled = False
         self.on_data_changed = on_data_changed    # set via set_on_data_changed
@@ -39,66 +39,28 @@ class PlannerWorkspace(QWidget):
         # ─────────────────────────────────────────────────────────────
         # Header / Controls bar (clean, modern)
         # ─────────────────────────────────────────────────────────────
-        header = QWidget(self)
-        header.setObjectName("HeaderBar")
-        header_lay = QHBoxLayout(header)
-        header_lay.setContentsMargins(12, 10, 12, 10)
-        header_lay.setSpacing(10)
-        root.addWidget(header)
+        # header = QWidget(self)
+        # header.setObjectName("HeaderBar")
+        # header_lay = QHBoxLayout(header)
+        # header_lay.setContentsMargins(12, 10, 12, 10)
+        # header_lay.setSpacing(10)
+        # root.addWidget(header)
 
-        # Left: view selector
-        self.view_cb = TightComboBox()
-        self.view_cb.addItem("Wochen", "week")
-        self.view_cb.addItem("Tag", "day")
-        self.view_cb.setToolTip("Ansicht wechseln (Tag / Wochen)")
-        self.view_cb.setFixedWidth(120)
-        header_lay.addWidget(self.view_cb)
+        # Left: view selector, navigation and date inputs are provided by
+        # the GlobalFilterDock. If a global dock is passed, use its widgets
+        # here so the planner behaves as if they were local.
+    
+        self.view_cb = global_filter_dock.view_cb
+        self.prev_btn = global_filter_dock.prev_btn
+        self.next_btn = global_filter_dock.next_btn
+        self.day_date = global_filter_dock.day_date
+        self.week_from = global_filter_dock.week_from
+        
 
-        # NEW: navigation buttons (left / right)
-        self.prev_btn = QPushButton("<")
-        self.prev_btn.setObjectName("NavButton")
-        self.prev_btn.setToolTip("Zurück (Tag: -1, Woche: -7)")
-        self.prev_btn.setFixedWidth(36)
-        header_lay.addWidget(self.prev_btn)
-
-        self.next_btn = QPushButton(">")
-        self.next_btn.setObjectName("NavButton")
-        self.next_btn.setToolTip("Weiter (Tag: +1, Woche: +7)")
-        self.next_btn.setFixedWidth(36)
-        header_lay.addWidget(self.next_btn)
-
-        # Date inputs
-        self.day_date = QDateEdit()
-        self.day_date.setCalendarPopup(True)
-        self.day_date.setDate(QDate.currentDate())
-        self.day_date.setToolTip("Datum für Tagansicht")
-        self.day_date.setFixedWidth(150)
-        header_lay.addWidget(self.day_date)
-
-        self.week_from = QDateEdit()
-        self.week_from.setCalendarPopup(True)
-        self.week_from.setToolTip("Wochenbereich: Von")
-        self.week_from.setFixedWidth(150)
-
-        today = date.today()
-        self.week_from.setDate(date_to_qdate(today - timedelta(days=28)))
-        header_lay.addWidget(self.week_from)
-
-        self.sem_cb = TightComboBox()
-        self.sem_cb.setToolTip("Semester filter")
-        self.sem_cb.setMinimumWidth(220)
-        header_lay.addWidget(self.sem_cb)
-
-        self.room_cb = TightComboBox()
-        self.room_cb.setToolTip("Raum filter")
-        self.room_cb.setMinimumWidth(220)
-        header_lay.addWidget(self.room_cb)
-
-        # LVA filter (dropdown like in TermineDock)
-        self.lva_cb = TightComboBox()
-        self.lva_cb.setToolTip("LVA")
-        self.lva_cb.setMinimumWidth(260)
-        header_lay.addWidget(self.lva_cb, 1)
+        # Note: global filters (Semester, LVA, Raum, Typ) are owned by MainWindow
+        # and exposed via the GlobalFilterDock. PlannerWorkspace reads them via
+        # `set_global_filter_state` / `current_filters` and does not own local
+        # dropdowns for those filters.
 
         # Right: actions
         # self.refresh_btn = QPushButton("Refresh")
@@ -120,8 +82,8 @@ class PlannerWorkspace(QWidget):
         self.week_table = WeekDropTable(0, 0)
         self.day_table.setSortingEnabled(False)
         self.week_table.setSortingEnabled(False)
-        self.day_table.setAlternatingRowColors(True)
-        self.week_table.setAlternatingRowColors(True)
+        self.day_table.setAlternatingRowColors(False)
+        self.week_table.setAlternatingRowColors(False)
         self.stack.addWidget(self.day_table)
         self.stack.addWidget(self.week_table)
 
@@ -154,8 +116,6 @@ class PlannerWorkspace(QWidget):
             state=self.state,
             day_table=self.day_table,
             day_date=self.day_date,
-            room_cb=self.room_cb,
-            sem_cb=self.sem_cb,
             friday_lbl=self.friday_lbl,
             conflict_lbl=self.conflict_lbl,
             edit_by_id_cb=self._edit_termin_by_id,
@@ -185,17 +145,12 @@ class PlannerWorkspace(QWidget):
         # Datenänderungen (Drop/Edit/Create/Delete) über reload_and_refresh_everything().
         self.day_date.dateChanged.connect(lambda *_: self.refresh(emit=False))
         self.week_from.dateChanged.connect(lambda *_: self.refresh(emit=False))
-        self.sem_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
-        self.room_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
-
-        # LVA dropdown filter
-        self.lva_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
 
         # self.add_term_btn.clicked.connect(self.add_termin)
 
         # ---- Init
         self._init_default_dates()
-        self._rebuild_filter_boxes()
+        # filter boxes are provided globally; planner no longer builds local ones
         self._on_view_changed()  # also applies enabled/visible state
         self.refresh(emit=False)
         self._emit_enabled = True
@@ -205,10 +160,6 @@ class PlannerWorkspace(QWidget):
         self.week_from.setObjectName("DateEdit")
 
         self.view_cb.setObjectName("HeaderCombo")
-        self.sem_cb.setObjectName("HeaderCombo")
-        self.room_cb.setObjectName("HeaderCombo")
-
-        self.lva_cb.setObjectName("HeaderCombo")
 
         # self.refresh_btn.setObjectName("SecondaryButton")
 
@@ -263,80 +214,28 @@ class PlannerWorkspace(QWidget):
 
 
     def _rebuild_filter_boxes(self):
-        current_sem = self.sem_cb.currentData() if self.sem_cb.count() else ""
-        self.sem_cb.blockSignals(True)
-        self.sem_cb.clear()
-        self.sem_cb.addItem("Semester: alle", "")
-        for s in self.state.semester:
-            self.sem_cb.addItem(f"{s.id} – {s.name}", s.id)
-        if current_sem:
-            for i in range(self.sem_cb.count()):
-                if self.sem_cb.itemData(i) == current_sem:
-                    self.sem_cb.setCurrentIndex(i)
-                    break
-        self.sem_cb.blockSignals(False)
+        # Planner no longer owns local filter comboboxes; global dock provides
+        # filter dropdowns. Keep this method lightweight so refresh() can call
+        # it to ensure state is loaded.
+        return
 
-        current_room = self.room_cb.currentData() if self.room_cb.count() else ""
-        self.room_cb.blockSignals(True)
-        self.room_cb.clear()
-        self.room_cb.addItem("Raum: alle", "")
-        for r in self.state.raeume:
-            self.room_cb.addItem(f"{r.id} – {r.name}", r.id)
-        if current_room:
-            for i in range(self.room_cb.count()):
-                if self.room_cb.itemData(i) == current_room:
-                    self.room_cb.setCurrentIndex(i)
-                    break
-        self.room_cb.blockSignals(False)
-
-        # LVA (same idea as TermineDock: dropdown, "LVA: Alle" + ids)
-        cur_lva = self.lva_cb.currentData() if self.lva_cb.count() else None
-        self.lva_cb.blockSignals(True)
-        self.lva_cb.clear()
-        self.lva_cb.addItem("LVA: Alle", None)
-
-        # Collect ids from current state.termine
-        lva_ids = sorted({t.lva_id for t in self.state.termine if getattr(t, "lva_id", None)})
-
-        # Try to resolve names if PlannerState provides a map/list (optional)
-        lva_name_map = getattr(self.state, "lva_map", None) or getattr(self.state, "lva_by_id", None)
-        lva_list = getattr(self.state, "lehrveranstaltungen", None) or getattr(self.state, "lvas", None)
-        if lva_name_map is None and lva_list:
-            try:
-                lva_name_map = {lv.id: lv for lv in lva_list}
-            except Exception:
-                lva_name_map = None
-
-        for lid in lva_ids:
-            name = ""
-            if lva_name_map is not None:
-                lv = lva_name_map.get(lid)
-                name = getattr(lv, "name", "") if lv else ""
-            text = f"{lid} – {name}".strip(" –")
-            self.lva_cb.addItem(text, lid)
-
-        if cur_lva is not None:
-            i = self.lva_cb.findData(cur_lva)
-            if i >= 0:
-                self.lva_cb.setCurrentIndex(i)
-        self.lva_cb.blockSignals(False)
-
-    def current_filters(self) -> Tuple[Optional[str], Optional[str], str]:
-        sem = self.sem_cb.currentData() or None
-        room = self.room_cb.currentData() or None
-        # We keep PlannerState.filtered_termine(q=...) unchanged: selecting an LVA
-        # simply feeds its id into the existing text filter.
-        sel_lva = self.lva_cb.currentData()
-        q = (str(sel_lva).strip().lower() if sel_lva else "")
-        return sem, room, q
+    def current_filters(self) -> Tuple[Optional[str], Optional[str], str, Optional[str]]:
+        # Prefer an internal cached global filter if available, otherwise
+        # return defaults (no filters).
+        gf = getattr(self, "_global_filter", None)
+        if gf is None:
+            return None, None, "", None
+        return gf.semester_id, gf.raum_id, (str(gf.lva_id).strip().lower() if gf.lva_id else ""), gf.typ
 
     def refresh(self, emit: bool = True):
         # Reload EVERYTHING every refresh so UI always matches saved JSON state
         self.state.reload()
         self._rebuild_filter_boxes()
 
-        sem, room, q = self.current_filters()
+        sem, room, q, typ = self.current_filters()
         filtered = self.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
+        if typ:
+            filtered = [t for t in filtered if getattr(t, "typ", None) == typ]
 
         view = str(self.view_cb.currentData())
         if view == "day":
@@ -377,6 +276,22 @@ class PlannerWorkspace(QWidget):
 
     def set_on_data_changed(self, cb):
         self.on_data_changed = cb
+
+    def set_global_filter_state(self, fs) -> None:
+        """Apply a read-only sync from global FilterState to this workspace's filter controls.
+
+        This updates the UI controls to reflect the global filters but does NOT
+        modify the central FilterState (MainWindow owns it) and does not emit
+        data-changed events to other docks.
+        """
+        # cache the global filter for read-only use by this workspace and
+        # refresh the view. Planner does not mutate central filter state.
+        if fs is None:
+            self._global_filter = None
+        else:
+            self._global_filter = fs
+
+        self.refresh(emit=False)
 
     def _on_week_drop(self, termin_id, new_date, new_start):
         # IMPORTANT: move_termin MUST persist changes.

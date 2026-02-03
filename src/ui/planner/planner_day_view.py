@@ -15,8 +15,6 @@ class PlannerDayView:
         state: PlannerState,
         day_table: QTableWidget,
         day_date: QDateEdit,
-        room_cb: QComboBox,
-        sem_cb: QComboBox,
         friday_lbl: QLabel,
         conflict_lbl: QLabel,
         edit_by_id_cb,
@@ -25,8 +23,6 @@ class PlannerDayView:
         self.state = state
         self.day_table = day_table
         self.day_date = day_date
-        self.room_cb = room_cb
-        self.sem_cb = sem_cb
         self.friday_lbl = friday_lbl
         self.conflict_lbl = conflict_lbl
         self.edit_by_id_cb = edit_by_id_cb
@@ -45,7 +41,7 @@ class PlannerDayView:
         assert self.state.ts is not None
 
         d = qdate_to_date(self.day_date.date())
-        sem, room_filter, _q = self.current_filters_cb()
+        sem, room_filter, _q, _typ = self.current_filters_cb()
         self.friday_lbl.setText("⭐ Freitag" if d.weekday() == 4 else "")
 
         rooms = self.state.raeume
@@ -53,9 +49,9 @@ class PlannerDayView:
             rooms = [r for r in rooms if r.id == room_filter]
 
         terms_day = [t for t in filtered_termine if t.datum == d]
-        self._build_day_grid(rooms, terms_day, d, sem)
+        self._build_day_grid(rooms, terms_day, d, sem, room_filter)
 
-    def _build_day_grid(self, rooms: List[Raum], terms: List[Termin], d: date, sem: Optional[str]) -> None:
+    def _build_day_grid(self, rooms: List[Raum], terms: List[Termin], d: date, sem: Optional[str], room_filter: Optional[str]) -> None:
         assert self.state.ts is not None
 
         day_start, day_end, slot_min = self._day_bounds()
@@ -144,9 +140,8 @@ class PlannerDayView:
         # Konflikte unten (TerminService)
         conflicts = self.state.ts.find_room_conflicts(self.state.termine, semester_id=sem)
         conflicts = [c for c in conflicts if c.datum == d]
-        if self.room_cb.currentData():
-            rid = self.room_cb.currentData()
-            conflicts = [c for c in conflicts if c.raum_id == rid]
+        if room_filter:
+            conflicts = [c for c in conflicts if c.raum_id == room_filter]
 
         if not conflicts:
             self.conflict_lbl.setText("Konflikte: keine ✅")

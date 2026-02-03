@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, time
 from typing import List, Optional
 
-from PySide6.QtCore import QTime, QDate
+from PySide6.QtCore import QTime, QDate, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QFormLayout, QLineEdit, QDialog, QDialogButtonBox, QMessageBox,
     QComboBox, QDateEdit, QTimeEdit, QCheckBox, QSpinBox, QTextEdit
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from ...models.models import Termin, Zeitfenster, Gruppe, Lehrveranstaltung, Semester, Raum
 from ..utils.datetime_utils import date_to_qdate, qdate_to_date
 
+from ..utils.widgets.tight_combobox import TightComboBox
 
 
 class TerminDialog(QDialog):
@@ -21,20 +22,37 @@ class TerminDialog(QDialog):
                  raeume: List[Raum],
                  termin: Optional[Termin] = None):
         super().__init__(parent)
+        
+        
+        self.setObjectName("TerminDialog")
+        self.setModal(True)
+
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setSpacing(12)
+
+        form = QFormLayout()
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        lay.addLayout(form)
+
+        
+        
         self.setWindowTitle("Termin bearbeiten" if termin else "Termin hinzufügen")
         self._result: Optional[Termin] = None
 
-        lay = QVBoxLayout(self)
-        form = QFormLayout()
-        lay.addLayout(form)
+        # lay = QVBoxLayout(self)
+        # form = QFormLayout()
+        # lay.addLayout(form)
 
         self.id_le = QLineEdit(termin.id if termin else "")
 
-        self.lva_cb = QComboBox()
+        self.lva_cb = TightComboBox()
         for l in lvas:
             self.lva_cb.addItem(f"{l.id} – {l.name}", l.id)
 
-        self.sem_cb = QComboBox()
+        self.sem_cb = TightComboBox()
         for s in semester:
             self.sem_cb.addItem(f"{s.id} – {s.name}", s.id)
 
@@ -44,8 +62,11 @@ class TerminDialog(QDialog):
         self.date_de.setCalendarPopup(True)
 
         # ✅ Unassigned Anzeige statt 01/01/2000
-        self._unassigned_qdate = date.today()
-        
+        # self._unassigned_qdate = date.today()
+        # self.date_de.setMinimumDate(self._unassigned_qdate)
+        # self.date_de.setSpecialValueText("Kein Datum zugewiesen")
+        # self.date_de.setDate(self._unassigned_qdate)
+        self._unassigned_qdate = QDate(2000, 1, 1)  # sentinel
         self.date_de.setMinimumDate(self._unassigned_qdate)
         self.date_de.setSpecialValueText("Kein Datum zugewiesen")
         self.date_de.setDate(self._unassigned_qdate)
@@ -56,7 +77,7 @@ class TerminDialog(QDialog):
         self.time_from = QTimeEdit()
         self.time_to = QTimeEdit()
 
-        self.raum_cb = QComboBox()
+        self.raum_cb = TightComboBox()
         for r in raeume:
             self.raum_cb.addItem(f"{r.id} – {r.name}", r.id)
 
@@ -132,10 +153,39 @@ class TerminDialog(QDialog):
         form.addRow("", self.ap_cb)
         form.addRow("Notiz:", self.note_te)
 
+        # bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        # bb.accepted.connect(self._accept)
+        # bb.rejected.connect(self.reject)
+        # lay.addWidget(bb)
+        
+        self.id_le.setObjectName("Field")
+        self.lva_cb.setObjectName("HeaderCombo")
+        self.sem_cb.setObjectName("HeaderCombo")
+        self.typ_le.setObjectName("Field")
+        self.date_de.setObjectName("DateEdit")
+        self.time_from.setObjectName("Field")
+        self.time_to.setObjectName("Field")
+        self.raum_cb.setObjectName("HeaderCombo")
+        self.grp_name.setObjectName("Field")
+        self.grp_size.setObjectName("Field")
+        self.note_te.setObjectName("Field")
+        
         bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         bb.accepted.connect(self._accept)
         bb.rejected.connect(self.reject)
+
+        # QSS hooks
+        bb.setObjectName("DialogButtons")
+        ok_btn = bb.button(QDialogButtonBox.Ok)
+        cancel_btn = bb.button(QDialogButtonBox.Cancel)
+        if ok_btn:
+            ok_btn.setObjectName("PrimaryButton")
+        if cancel_btn:
+            cancel_btn.setObjectName("SecondaryButton")
+
         lay.addWidget(bb)
+
+
 
     def _set_cb(self, cb: QComboBox, data_value: str):
         for i in range(cb.count()):

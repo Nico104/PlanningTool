@@ -127,16 +127,11 @@ class PlannerWeekView:
         for r, tt in enumerate(slots):
             it = QTableWidgetItem(f"{tt.hour:02d}:{tt.minute:02d}")
             it.setFlags(it.flags() & ~Qt.ItemIsEditable)
-
-            # IMPORTANT: grid-line style (Option 2)
             it.setTextAlignment(Qt.AlignRight | Qt.AlignTop)
-
             self.week_table.setItem(r, 0, it)
 
-        # clear all spans first (important when refreshing)
-        for r in range(len(slots)):
-            for c in range(1, 1 + len(days)):
-                self.week_table.setSpan(r, c, 1, 1)
+        # ✅ clear spans properly (no warnings)
+        self.week_table.clearSpans()
 
         # prepare empty cells
         for col in range(6):
@@ -147,14 +142,10 @@ class PlannerWeekView:
                 cell.setTextAlignment(Qt.AlignLeft | Qt.AlignTop)
                 cell.setData(Qt.UserRole, None)  # termin id
                 cell.setData(Qt.UserRole + 1, d0.isoformat())  # target date
-
-                # reset styling for empty cells
                 cell.setBackground(QBrush(Qt.transparent))
                 cell.setForeground(QBrush(DEFAULT_FG))
                 f = cell.font()
-                f.setBold(False)
                 cell.setFont(f)
-
                 self.week_table.setItem(r, 1 + col, cell)
 
         # render existing Termine into grid as blocks (span rows by duration)
@@ -185,17 +176,11 @@ class PlannerWeekView:
 
                 row = slots.index(start_t)
 
-                # duration -> number of rows (ceil to GRID_MIN)
                 dur_min = end_min - start_min
                 span_rows = max(1, (dur_min + GRID_MIN - 1) // GRID_MIN)
-
-                # clamp so we don't run past the end of the table
                 span_rows = min(span_rows, len(slots) - row)
 
                 col_idx = 1 + col
-
-                # clear existing span at start cell (safety)
-                self.week_table.setSpan(row, col_idx, 1, 1)
 
                 # clear items in covered rows so text doesn't appear below
                 for rr in range(row, row + span_rows):
@@ -209,16 +194,14 @@ class PlannerWeekView:
 
                     it.setText("")
                     it.setData(Qt.UserRole, None)
-
-                    # also reset styling
                     it.setBackground(QBrush(Qt.transparent))
                     it.setForeground(QBrush(DEFAULT_FG))
                     f = it.font()
-                    f.setBold(False)
                     it.setFont(f)
 
-                # apply span
-                self.week_table.setSpan(row, col_idx, span_rows, 1)
+                # ✅ only span if it actually spans
+                if span_rows > 1:
+                    self.week_table.setSpan(row, col_idx, span_rows, 1)
 
                 cell = self.week_table.item(row, col_idx)
                 if not cell:
@@ -237,7 +220,6 @@ class PlannerWeekView:
                 )
                 cell.setData(Qt.UserRole, t.id)
 
-                # ---- color by type (Option A) ----
                 typ = (t.typ or "").strip().upper()
                 bg = TYPE_COLORS.get(typ, DEFAULT_BG)
                 cell.setBackground(QBrush(bg))
@@ -246,6 +228,7 @@ class PlannerWeekView:
                 f = cell.font()
                 f.setBold(False)
                 cell.setFont(f)
+
 
     def _on_double_click(self, row: int, col: int):
         if col <= 0:

@@ -128,13 +128,13 @@ QPushButton#PrimaryButton:disabled {
 }
 
 /* --- Tables / Views ------------------------------------- */
-QTableWidget, QTableView, QTreeView, QListView {
+/* QTableWidget, QTableView, QTreeView, QListView {
   background: #fcfbfa;
   border: 1px solid #e4e2df;
   border-radius: 12px;
   gridline-color: #f0efec;
   alternate-background-color: #faf7fa;
-}
+} */
 
 QTableWidget::item, QTableView::item,
 QTreeView::item, QListView::item {
@@ -323,4 +323,11 @@ QComboBox QAbstractItemView::item:selected:hover {
 QComboBox QAbstractItemView::item:!active:selected {
     background: #5A8CFF;
     color: black;
+}
+
+
+QPushButton#NavButton {
+  padding: 0px;
+  min-height: 80px;
+  border-radius: 10px;
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtGui import QPalette
+from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import Qt
 
@@ -15,7 +15,21 @@ def load_global_style(app: QApplication) -> None:
     Erwartet: src/ui/styles/light.qss (so wie du es in deinem Code wolltest).
     """
     app.setStyle("Fusion")
-    app.setPalette(QPalette("#f8f8f8"))
+    
+    pal = QPalette()
+
+    # Light UI base
+    pal.setColor(QPalette.Window, QColor("#f8f8f8"))
+    pal.setColor(QPalette.Base, QColor("#ffffff"))
+    # pal.setColor(QPalette.Window, QColor("green"))
+    # pal.setColor(QPalette.Base, QColor("red"))
+    pal.setColor(QPalette.Text, QColor("#111111"))
+    pal.setColor(QPalette.WindowText, QColor("#111111"))
+
+    # Selection (IMPORTANT: removes brown highlight)
+    pal.setColor(QPalette.Highlight, QColor("#01659b"))
+    pal.setColor(QPalette.HighlightedText, QColor("#ffffff"))
+    app.setPalette(pal)
 
     # app_bootstrap.py liegt in: src/ui/main_window/
     # styles liegt in:        src/ui/styles/
