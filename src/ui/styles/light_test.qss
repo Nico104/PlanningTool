@@ -267,4 +267,3 @@ QTableWidget::item:focus {
   outline: none;
 }
 
-

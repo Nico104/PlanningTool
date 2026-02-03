@@ -11,11 +11,14 @@ from PySide6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QMenu, QMessageBox
 )
 
-from ...models.models import Lehrveranstaltung, Raum, Semester
+from ...models.models import Lehrveranstaltung, Raum, Semester, Termin
 from ..dialog.lva_dialog import LVADialog
 from ..dialog.raum_dialog import RaumDialog
 from ..dialog.semester_dialog import SemesterDialog
 from ..dialog.freie_tage_dialog import FreieTageDialog
+from ..utils.datetime_utils import fmt_date, fmt_time
+
+from ..dialog.termin_dialog import TerminDialog
 
 
 # --------- kleine Helpers ---------
@@ -150,6 +153,13 @@ class DataEditorDock(QDockWidget):
         self.tab_rooms = _EditorTab("Räume", ["ID", "Name", "Kapazität"], self.tabs)
         self.tab_sem = _EditorTab("Semester", ["ID", "Name", "Start", "Ende"], self.tabs)
         self.tab_free = _EditorTab("Freie Tage", ["Art", "Datum", "Von", "Bis", "Beschreibung"], self.tabs)
+        self.tab_termine = _EditorTab(
+            "Termine",
+            ["ID", "Datum", "Von", "Bis", "Typ", "LVA", "Raum", "Semester", "Gruppe"],
+            self.tabs
+        )
+        
+        self.tabs.addTab(self.tab_termine, "Termine")
 
         self.tabs.addTab(self.tab_lva, "LVAs")
         self.tabs.addTab(self.tab_rooms, "Räume")
@@ -174,6 +184,11 @@ class DataEditorDock(QDockWidget):
         self.tab_free.add_clicked.connect(self._add_free)
         self.tab_free.edit_clicked.connect(self._edit_free)
         self.tab_free.delete_clicked.connect(self._del_free)
+        
+        self.tab_termine.add_clicked.connect(self._add_termin)
+        self.tab_termine.edit_clicked.connect(self._edit_termin)
+        self.tab_termine.delete_clicked.connect(self._del_termin)
+
 
     # ---------- Public API ----------
     def refresh_all(self) -> None:
@@ -181,6 +196,7 @@ class DataEditorDock(QDockWidget):
         self._refresh_rooms()
         self._refresh_semester()
         self._refresh_freie_tage()
+        self._refresh_termine()
 
     # ---------- Refresh tables ----------
     def _refresh_lvas(self) -> None:
@@ -270,6 +286,56 @@ class DataEditorDock(QDockWidget):
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()
+        
+    def _refresh_termine(self) -> None:
+        # local imports so we don't depend on file-level imports
+        from ..utils.datetime_utils import fmt_date, fmt_time
+
+        def safe_date(d) -> str:
+            try:
+                return fmt_date(d) if d else ""
+            except Exception:
+                return str(d) if d is not None else ""
+
+        def safe_time(t) -> str:
+            try:
+                return fmt_time(t) if t else ""
+            except Exception:
+                return str(t) if t is not None else ""
+
+        termine: List[Termin] = self.ds.load_termine()
+        t = self.tab_termine.table
+
+        t.setSortingEnabled(False)
+        t.setRowCount(0)
+
+        for tm in termine:
+            row = t.rowCount()
+            t.insertRow(row)
+
+            zeit = getattr(tm, "zeit", None)
+            von = getattr(zeit, "von", None) if zeit else None
+            bis = getattr(zeit, "bis", None) if zeit else None
+
+            vals = [
+                getattr(tm, "id", ""),
+                safe_date(getattr(tm, "datum", None)),
+                safe_time(von),
+                safe_time(bis),
+                getattr(tm, "typ", ""),
+                getattr(tm, "lva_id", ""),
+                getattr(tm, "raum_id", ""),
+                getattr(tm, "semester_id", ""),
+                getattr(tm, "gruppe", "") or "",
+            ]
+
+            for c, v in enumerate(vals):
+                t.setItem(row, c, _it(str(v)))
+
+        t.setSortingEnabled(True)
+        t.resizeColumnsToContents()
+
+
 
     # ---------- CRUD: LVA ----------
     def _add_lva(self) -> None:
@@ -442,3 +508,61 @@ class DataEditorDock(QDockWidget):
         self.refresh_all()
         if self.on_data_changed:
             self.on_data_changed()
+
+    def _add_termin(self) -> None:
+        dlg = TerminDialog(
+            self,
+            lvas=self.ds.load_lvas(),
+            semester=self.ds.load_semester(),
+            raeume=self.ds.load_raeume(),
+            termin=None
+        )
+        if dlg.exec() != dlg.Accepted or not dlg.result:
+            return
+
+        termine = self.ds.load_termine()
+        if any(t.id == dlg.result.id for t in termine):
+            QMessageBox.warning(self, "Fehler", f"Termin-ID '{dlg.result.id}' existiert bereits.")
+            return
+
+        termine.append(dlg.result)
+        self.ds.save_termine(termine)
+        self._after_change()
+
+    def _edit_termin(self) -> None:
+        tid = _selected_id(self.tab_termine.table)
+        if not tid:
+            return
+
+        termine = self.ds.load_termine()
+        cur = next((t for t in termine if t.id == tid), None)
+        if not cur:
+            return
+
+        dlg = TerminDialog(
+            self,
+            lvas=self.ds.load_lvas(),
+            semester=self.ds.load_semester(),
+            raeume=self.ds.load_raeume(),
+            termin=cur
+        )
+        if dlg.exec() != dlg.Accepted or not dlg.result:
+            return
+
+        out = [dlg.result if t.id == tid else t for t in termine]
+        self.ds.save_termine(out)
+        self._after_change()
+
+    def _del_termin(self) -> None:
+        tid = _selected_id(self.tab_termine.table)
+        if not tid:
+            return
+
+        if QMessageBox.question(self, "Löschen", f"Termin '{tid}' wirklich löschen?") != QMessageBox.Yes:
+            return
+
+        termine = [t for t in self.ds.load_termine() if t.id != tid]
+        self.ds.save_termine(termine)
+        self._after_change()
+
+

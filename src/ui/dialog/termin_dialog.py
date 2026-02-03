@@ -143,44 +143,6 @@ class TerminDialog(QDialog):
                 cb.setCurrentIndex(i)
                 return
 
-    # def _accept(self):
-    #     tid = self.id_le.text().strip()
-    #     if not tid:
-    #         QMessageBox.warning(self, "Fehler", "Termin-ID ist Pflicht.")
-    #         return
-
-    #     lva_id = str(self.lva_cb.currentData())
-    #     sem_id = str(self.sem_cb.currentData())
-    #     raum_id = str(self.raum_cb.currentData())
-    #     typ = self.typ_le.text().strip().upper()
-    #     d = qdate_to_date(self.date_de.date())
-
-    #     tf = self.time_from.time()
-    #     tt = self.time_to.time()
-    #     von = time(tf.hour(), tf.minute())
-    #     bis = time(tt.hour(), tt.minute())
-    #     if bis <= von:
-    #         QMessageBox.warning(self, "Fehler", "Endzeit muss nach Startzeit liegen.")
-    #         return
-
-    #     gname = self.grp_name.text().strip() or "-"
-    #     gsize = int(self.grp_size.value())
-    #     if gname == "-":
-    #         gsize = 0
-
-    #     self._result = Termin(
-    #         id=tid,
-    #         lva_id=lva_id,
-    #         semester_id=sem_id,
-    #         typ=typ,
-    #         datum=d,
-    #         zeit=Zeitfenster(von=von, bis=bis),
-    #         raum_id=raum_id,
-    #         gruppe=Gruppe(name=gname, groesse=gsize),
-    #         anwesenheitspflicht=bool(self.ap_cb.isChecked()),
-    #         notiz=self.note_te.toPlainText().strip(),
-    #     )
-    #     self.accept()
     def _accept(self):
         tid = self.id_le.text().strip()
         if not tid:

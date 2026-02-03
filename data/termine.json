@@ -17,10 +17,10 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-04",
+      "datum": "2026-02-02",
       "zeit": {
-        "von": "10:30",
-        "bis": "12:00"
+        "von": "13:30",
+        "bis": "15:00"
       },
       "raum_id": "E17",
       "gruppe": null,
@@ -32,10 +32,10 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "UE",
-      "datum": "2026-02-06",
+      "datum": "2026-02-04",
       "zeit": {
-        "von": "13:00",
-        "bis": "15:30"
+        "von": "12:00",
+        "bis": "14:30"
       },
       "raum_id": "F01",
       "gruppe": null,
@@ -47,10 +47,10 @@
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-04",
+      "datum": "2026-02-03",
       "zeit": {
-        "von": "14:30",
-        "bis": "15:00"
+        "von": "10:00",
+        "bis": "10:30"
       },
       "raum_id": "E17",
       "gruppe": {

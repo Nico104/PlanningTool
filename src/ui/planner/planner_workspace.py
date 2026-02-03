@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Optional, Tuple
 
-from PySide6.QtCore import Qt, QDate, QTimer
+from PySide6.QtCore import Qt, QDate
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QDateEdit, QLabel, QLineEdit,
-    QPushButton, QStackedWidget, QTableWidget, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QDateEdit, QLabel,
+    QPushButton, QStackedWidget, QTableWidget
 )
 
 from ...services.dataService import DataService
@@ -84,32 +84,31 @@ class PlannerWorkspace(QWidget):
         self.week_from.setDate(date_to_qdate(today - timedelta(days=28)))
         header_lay.addWidget(self.week_from)
 
-        self.sem_cb = QComboBox()
+        self.sem_cb = TightComboBox()
         self.sem_cb.setToolTip("Semester filter")
         self.sem_cb.setMinimumWidth(220)
         header_lay.addWidget(self.sem_cb)
 
-        self.room_cb = QComboBox()
+        self.room_cb = TightComboBox()
         self.room_cb.setToolTip("Raum filter")
         self.room_cb.setMinimumWidth(220)
         header_lay.addWidget(self.room_cb)
 
-        self.search_le = QLineEdit()
-        self.search_le.setPlaceholderText("Suchen (LVA-ID / Text)…")
-        self.search_le.setToolTip("Filtert Termine nach LVA-ID oder Text")
-        self.search_le.setClearButtonEnabled(True)
-        self.search_le.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        header_lay.addWidget(self.search_le, 1)
+        # LVA filter (dropdown like in TermineDock)
+        self.lva_cb = TightComboBox()
+        self.lva_cb.setToolTip("LVA")
+        self.lva_cb.setMinimumWidth(260)
+        header_lay.addWidget(self.lva_cb, 1)
 
         # Right: actions
-        self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.setToolTip("Daten neu laden und Ansicht aktualisieren")
-        header_lay.addWidget(self.refresh_btn)
+        # self.refresh_btn = QPushButton("Refresh")
+        # self.refresh_btn.setToolTip("Daten neu laden und Ansicht aktualisieren")
+        # header_lay.addWidget(self.refresh_btn)
 
-        self.add_term_btn = QPushButton("Termin hinzufügen")
-        self.add_term_btn.setObjectName("PrimaryButton")
-        self.add_term_btn.setToolTip("Neuen Termin anlegen")
-        header_lay.addWidget(self.add_term_btn)
+        # self.add_term_btn = QPushButton("Termin hinzufügen")
+        # self.add_term_btn.setObjectName("PrimaryButton")
+        # self.add_term_btn.setToolTip("Neuen Termin anlegen")
+        # header_lay.addWidget(self.add_term_btn)
 
         # ─────────────────────────────────────────────────────────────
         # Views
@@ -173,26 +172,26 @@ class PlannerWorkspace(QWidget):
         # ─────────────────────────────────────────────────────────────
         # Signals + small UX improvements
         # ─────────────────────────────────────────────────────────────
-        self.refresh_btn.clicked.connect(self.refresh)
+        # self.refresh_btn.clicked.connect(self.refresh)
         self.view_cb.currentIndexChanged.connect(self._on_view_changed)
 
         # NEW: nav buttons
         self.prev_btn.clicked.connect(lambda: self._shift_period(-1))
         self.next_btn.clicked.connect(lambda: self._shift_period(+1))
 
-        self.day_date.dateChanged.connect(lambda *_: self.refresh())
-        self.week_from.dateChanged.connect(lambda *_: self.refresh())
-        self.sem_cb.currentIndexChanged.connect(lambda *_: self.refresh())
-        self.room_cb.currentIndexChanged.connect(lambda *_: self.refresh())
+        # NOTE:
+        # Planner-Filter/Navigation soll *nur* den Planner selbst beeinflussen.
+        # Das Updaten der Docks/Terminliste (on_data_changed) passiert nur bei echten
+        # Datenänderungen (Drop/Edit/Create/Delete) über reload_and_refresh_everything().
+        self.day_date.dateChanged.connect(lambda *_: self.refresh(emit=False))
+        self.week_from.dateChanged.connect(lambda *_: self.refresh(emit=False))
+        self.sem_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
+        self.room_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
 
-        # Debounced search
-        self._search_timer = QTimer(self)
-        self._search_timer.setSingleShot(True)
-        self._search_timer.setInterval(180)
-        self._search_timer.timeout.connect(self.refresh)
-        self.search_le.textChanged.connect(lambda *_: self._search_timer.start())
+        # LVA dropdown filter
+        self.lva_cb.currentIndexChanged.connect(lambda *_: self.refresh(emit=False))
 
-        self.add_term_btn.clicked.connect(self.add_termin)
+        # self.add_term_btn.clicked.connect(self.add_termin)
 
         # ---- Init
         self._init_default_dates()
@@ -209,9 +208,9 @@ class PlannerWorkspace(QWidget):
         self.sem_cb.setObjectName("HeaderCombo")
         self.room_cb.setObjectName("HeaderCombo")
 
-        self.search_le.setObjectName("HeaderSearch")
+        self.lva_cb.setObjectName("HeaderCombo")
 
-        self.refresh_btn.setObjectName("SecondaryButton")
+        # self.refresh_btn.setObjectName("SecondaryButton")
 
     # ─────────────────────────────────────────────────────────────
     # NEW: single place to force full update
@@ -243,7 +242,8 @@ class PlannerWorkspace(QWidget):
             wf = self._align_to_monday(wf) + timedelta(days=7 * direction)
             self.week_from.setDate(date_to_qdate(wf))
 
-        self.refresh()
+        # navigation should not refresh external docks/terminliste
+        self.refresh(emit=False)
 
     def _init_default_dates(self):
         if not self.state.termine:
@@ -289,10 +289,45 @@ class PlannerWorkspace(QWidget):
                     break
         self.room_cb.blockSignals(False)
 
+        # LVA (same idea as TermineDock: dropdown, "LVA: Alle" + ids)
+        cur_lva = self.lva_cb.currentData() if self.lva_cb.count() else None
+        self.lva_cb.blockSignals(True)
+        self.lva_cb.clear()
+        self.lva_cb.addItem("LVA: Alle", None)
+
+        # Collect ids from current state.termine
+        lva_ids = sorted({t.lva_id for t in self.state.termine if getattr(t, "lva_id", None)})
+
+        # Try to resolve names if PlannerState provides a map/list (optional)
+        lva_name_map = getattr(self.state, "lva_map", None) or getattr(self.state, "lva_by_id", None)
+        lva_list = getattr(self.state, "lehrveranstaltungen", None) or getattr(self.state, "lvas", None)
+        if lva_name_map is None and lva_list:
+            try:
+                lva_name_map = {lv.id: lv for lv in lva_list}
+            except Exception:
+                lva_name_map = None
+
+        for lid in lva_ids:
+            name = ""
+            if lva_name_map is not None:
+                lv = lva_name_map.get(lid)
+                name = getattr(lv, "name", "") if lv else ""
+            text = f"{lid} – {name}".strip(" –")
+            self.lva_cb.addItem(text, lid)
+
+        if cur_lva is not None:
+            i = self.lva_cb.findData(cur_lva)
+            if i >= 0:
+                self.lva_cb.setCurrentIndex(i)
+        self.lva_cb.blockSignals(False)
+
     def current_filters(self) -> Tuple[Optional[str], Optional[str], str]:
         sem = self.sem_cb.currentData() or None
         room = self.room_cb.currentData() or None
-        q = (self.search_le.text() or "").strip().lower()
+        # We keep PlannerState.filtered_termine(q=...) unchanged: selecting an LVA
+        # simply feeds its id into the existing text filter.
+        sel_lva = self.lva_cb.currentData()
+        q = (str(sel_lva).strip().lower() if sel_lva else "")
         return sem, room, q
 
     def refresh(self, emit: bool = True):
@@ -329,7 +364,8 @@ class PlannerWorkspace(QWidget):
             wf = self._qdate_to_pydate(self.week_from.date())
             self.week_from.setDate(date_to_qdate(self._align_to_monday(wf)))
 
-        self.refresh()
+        # view switching should not refresh external docks/terminliste
+        self.refresh(emit=False)
 
     def add_termin(self):
         if self.actions.add_termin(default_qdate=self.day_date.date()):

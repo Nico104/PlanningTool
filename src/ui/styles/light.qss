@@ -133,7 +133,7 @@ QTableWidget, QTableView, QTreeView, QListView {
   border: 1px solid #e4e2df;
   border-radius: 12px;
   gridline-color: #f0efec;
-  alternate-background-color: #faf9f7;
+  alternate-background-color: #faf7fa;
 }
 
 QTableWidget::item, QTableView::item,
@@ -324,4 +324,3 @@ QComboBox QAbstractItemView::item:!active:selected {
     background: #5A8CFF;
     color: black;
 }
-
