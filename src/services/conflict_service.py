@@ -31,7 +31,6 @@ Example:
 That's it! No need to modify detect_all() or register anything.
 """
 
-from __future__ import annotations
 from datetime import date, time
 from typing import List, Dict, Optional, Tuple, Callable
 from ..core.models import Termin, Lehrveranstaltung, Raum, Semester, ConflictIssue

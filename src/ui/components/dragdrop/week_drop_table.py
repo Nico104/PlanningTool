@@ -72,8 +72,6 @@
 #         drag.exec(Qt.MoveAction)
 
 
-from __future__ import annotations
-
 from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect
 from PySide6.QtGui import QDropEvent, QDragMoveEvent, QPainter, QPen, QColor
 from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QTableWidgetSelectionRange

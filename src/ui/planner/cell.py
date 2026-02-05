@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from PySide6.QtCore import Qt, QSize, QMimeData, Signal
 from shiboken6 import isValid
 import weakref

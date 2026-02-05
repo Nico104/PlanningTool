@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from PySide6.QtCore import Qt, QMimeData
 from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView

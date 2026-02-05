@@ -1,7 +1,3 @@
-
-
-from __future__ import annotations
-
 from typing import List, Dict, Optional
 
 from PySide6.QtCore import Qt, Signal,QDate

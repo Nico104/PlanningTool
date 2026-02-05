@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QFrame
 
@@ -27,7 +25,7 @@ class ConflictCard(QFrame):
 
         self.setObjectName("ConflictCard")
         self.setCursor(Qt.PointingHandCursor)
-        self.setAttribute(Qt.WA_StyledBackground, True)
+        # self.setAttribute(Qt.WA_StyledBackground, True)
         self.setProperty("conflictKind", conflict_kind)
         self.setProperty("severity", severity)
 

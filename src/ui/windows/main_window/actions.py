@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import QDialog, QInputDialog, QMessageBox
 
