@@ -15,6 +15,8 @@ from ...services.conflict_service import ConflictDetector
 from ..components.cards.conflict_card import ConflictCard
 from ..utils.datetime_utils import fmt_date, fmt_time
 
+from ..components.widgets.tight_combobox import TightComboBox
+
 
 class ConflictsDock(QDockWidget):
     """Dock widget for displaying schedule conflicts and warnings."""
@@ -52,25 +54,32 @@ class ConflictsDock(QDockWidget):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(4)
         
-        # Filter controls
-        filter_layout = QHBoxLayout()
+        # Filter controls (match global filter styling)
+        filter_bar = QWidget(self)
+        filter_bar.setObjectName("HeaderBar")
+        filter_layout = QHBoxLayout(filter_bar)
+        filter_layout.setContentsMargins(6, 6, 6, 6)
         filter_layout.setSpacing(8)
-        
-        filter_layout.addWidget(QLabel("Typ:"))
-        self.severity_filter = QComboBox()
-        self.severity_filter.addItems(["Alle", "Konflikt", "Warnung"])
-        self.severity_filter.currentTextChanged.connect(self._on_filter_changed)
+
+        self.severity_filter = TightComboBox()
+        self.severity_filter.setObjectName("HeaderCombo")
+        self.severity_filter.setMinimumWidth(160)
+        self.severity_filter.addItem("Typ: Alle", "Alle")
+        self.severity_filter.addItem("Typ: Konflikt", "Konflikt")
+        self.severity_filter.addItem("Typ: Warnung", "Warnung")
+        self.severity_filter.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.severity_filter)
-        
-        filter_layout.addWidget(QLabel("Kategorie:"))
-        self.category_filter = QComboBox()
-        self.category_filter.addItem("Alle")
-        self.category_filter.currentTextChanged.connect(self._on_filter_changed)
+
+        self.category_filter = TightComboBox()
+        self.category_filter.setObjectName("HeaderCombo")
+        self.category_filter.setMinimumWidth(220)
+        self.category_filter.addItem("Kategorie: Alle", "Alle")
+        self.category_filter.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.category_filter)
-        
+
         filter_layout.addStretch()
-        
-        layout.addLayout(filter_layout)
+
+        layout.addWidget(filter_bar)
         
         # Header with summary and refresh button
         header = QHBoxLayout()
@@ -206,8 +215,8 @@ class ConflictsDock(QDockWidget):
     
     def _on_filter_changed(self) -> None:
         """Handle filter dropdown changes."""
-        self._filter_severity = self.severity_filter.currentText()
-        self._filter_category = self.category_filter.currentText()
+        self._filter_severity = self.severity_filter.currentData() or "Alle"
+        self._filter_category = self.category_filter.currentData() or "Alle"
         self._populate_cards()
     
     def _apply_filters(self) -> List[ConflictIssue]:
@@ -230,7 +239,7 @@ class ConflictsDock(QDockWidget):
     def _update_category_filter(self) -> None:
         """Update category filter dropdown with unique categories from current issues."""
         # Store current selection
-        current = self.category_filter.currentText()
+        current = self.category_filter.currentData() or "Alle"
         
         # Get unique categories
         categories = sorted(set(issue.category for issue in self._issues))
@@ -238,11 +247,12 @@ class ConflictsDock(QDockWidget):
         # Update dropdown
         self.category_filter.blockSignals(True)  # Prevent triggering filter change
         self.category_filter.clear()
-        self.category_filter.addItem("Alle")
-        self.category_filter.addItems(categories)
+        self.category_filter.addItem("Kategorie: Alle", "Alle")
+        for category in categories:
+            self.category_filter.addItem(f"Kategorie: {category}", category)
         
         # Restore selection if still valid
-        idx = self.category_filter.findText(current)
+        idx = self.category_filter.findData(current)
         if idx >= 0:
             self.category_filter.setCurrentIndex(idx)
         else:

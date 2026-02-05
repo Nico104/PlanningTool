@@ -23,8 +23,8 @@ class GlobalFilterDock(QDockWidget):
         self.setAllowedAreas(Qt.AllDockWidgetAreas)
 
         self._widget = QWidget(self)
+        self._widget.setObjectName("HeaderBar")
         headerBar = QHBoxLayout(self._widget)
-        headerBar.setObjectName("HeaderBar")
         headerBar.setContentsMargins(6, 6, 6, 6)
         headerBar.setSpacing(8)
 
