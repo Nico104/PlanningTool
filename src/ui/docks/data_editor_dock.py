@@ -11,14 +11,14 @@ from PySide6.QtWidgets import (
     QPushButton, QTableWidget, QTableWidgetItem, QMenu, QMessageBox
 )
 
-from ...models.models import Lehrveranstaltung, Raum, Semester, Termin
-from ..dialog.lva_dialog import LVADialog
-from ..dialog.raum_dialog import RaumDialog
-from ..dialog.semester_dialog import SemesterDialog
-from ..dialog.freie_tage_dialog import FreieTageDialog
+from ...core.models import Lehrveranstaltung, Raum, Semester, Termin
+from ..dialogs.lva_dialog import LVADialog
+from ..dialogs.raum_dialog import RaumDialog
+from ..dialogs.semester_dialog import SemesterDialog
+from ..dialogs.freie_tage_dialog import FreieTageDialog
 from ..utils.datetime_utils import fmt_date, fmt_time
 
-from ..dialog.termin_dialog import TerminDialog
+from ..dialogs.termin_dialog import TerminDialog
 
 
 # --------- kleine Helpers ---------
@@ -313,15 +313,14 @@ class DataEditorDock(QDockWidget):
             row = t.rowCount()
             t.insertRow(row)
 
-            zeit = getattr(tm, "zeit", None)
-            von = getattr(zeit, "von", None) if zeit else None
-            bis = getattr(zeit, "bis", None) if zeit else None
+            start_zeit = getattr(tm, "start_zeit", None)
+            end_zeit = tm.get_end_time() if hasattr(tm, 'get_end_time') else None
 
             vals = [
                 getattr(tm, "id", ""),
                 safe_date(getattr(tm, "datum", None)),
-                safe_time(von),
-                safe_time(bis),
+                safe_time(start_zeit),
+                safe_time(end_zeit),
                 getattr(tm, "typ", ""),
                 getattr(tm, "lva_id", ""),
                 getattr(tm, "raum_id", ""),
@@ -515,7 +514,8 @@ class DataEditorDock(QDockWidget):
             lvas=self.ds.load_lvas(),
             semester=self.ds.load_semester(),
             raeume=self.ds.load_raeume(),
-            termin=None
+            termin=None,
+            settings=self.ds.load_settings()
         )
         if dlg.exec() != dlg.Accepted or not dlg.result:
             return
@@ -544,7 +544,8 @@ class DataEditorDock(QDockWidget):
             lvas=self.ds.load_lvas(),
             semester=self.ds.load_semester(),
             raeume=self.ds.load_raeume(),
-            termin=cur
+            termin=cur,
+            settings=self.ds.load_settings()
         )
         if dlg.exec() != dlg.Accepted or not dlg.result:
             return

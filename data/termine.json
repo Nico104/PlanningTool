@@ -5,15 +5,13 @@
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-02-03",
-      "zeit": {
-        "von": "12:30",
-        "bis": "13:00"
-      },
+      "datum": "2026-02-04",
+      "start_zeit": "13:30",
       "raum_id": "E17",
       "gruppe": null,
       "anwesenheitspflicht": false,
-      "notiz": ""
+      "notiz": "",
+      "duration": 39
     },
     {
       "id": "T002",
@@ -21,41 +19,41 @@
       "semester_id": "SS2026",
       "typ": "VO",
       "datum": null,
-      "zeit": null,
+      "start_zeit": null,
       "raum_id": "E17",
       "gruppe": null,
       "anwesenheitspflicht": false,
-      "notiz": ""
+      "notiz": "",
+      "duration": 90
     },
     {
       "id": "T003",
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "UE",
-      "datum": "2026-02-05",
-      "zeit": {
-        "von": "15:30",
-        "bis": "16:00"
-      },
+      "datum": null,
+      "start_zeit": null,
       "raum_id": "F01",
       "gruppe": null,
       "anwesenheitspflicht": true,
-      "notiz": "Übungsgruppe A"
+      "notiz": "Übungsgruppe A",
+      "duration": 390
     },
     {
       "id": "T004",
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": null,
-      "zeit": null,
+      "datum": "2026-02-04",
+      "start_zeit": "12:30",
       "raum_id": "E17",
       "gruppe": {
         "name": "",
         "groesse": 1
       },
       "anwesenheitspflicht": false,
-      "notiz": ""
+      "notiz": "",
+      "duration": 150
     },
     {
       "id": "T005",
@@ -63,14 +61,15 @@
       "semester_id": "SS2026",
       "typ": "LU",
       "datum": null,
-      "zeit": null,
+      "start_zeit": null,
       "raum_id": "LAB3",
       "gruppe": {
         "name": "B",
         "groesse": 20
       },
       "anwesenheitspflicht": true,
-      "notiz": ""
+      "notiz": "",
+      "duration": 30
     }
   ]
 }

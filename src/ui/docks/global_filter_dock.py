@@ -7,8 +7,8 @@ from datetime import date, timedelta
 from PySide6.QtCore import Qt, Signal, QDate
 from PySide6.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QPushButton, QDateEdit
 
-from ..utils.widgets.tight_combobox import TightComboBox
-from ...models.filter_state import FilterState
+from ..components.widgets.tight_combobox import TightComboBox
+from ...core.states import FilterState
 
 
 class GlobalFilterDock(QDockWidget):

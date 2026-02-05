@@ -2,7 +2,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Dict, List, Optional
 
-from ..models.models import Semester, Raum, Lehrveranstaltung, Termin, Zeitfenster
+from ..core.models import Semester, Raum, Lehrveranstaltung, Termin, Zeitfenster
 
 
 def fmt_date(d: date) -> str:
@@ -36,7 +36,8 @@ def print_termine(termine: List[Termin], lva_map: Dict[str, Lehrveranstaltung], 
         grp = "" if (t.gruppe.name in ("", "-", None)) else f" | Gruppe {t.gruppe.name} ({t.gruppe.groesse})"
         ap = " | AP" if t.anwesenheitspflicht else ""
         note = f" | {t.notiz}" if t.notiz else ""
-        print(f"- {t.id}: {fmt_date(t.datum)} {fmt_time(t.zeit.von)}–{fmt_time(t.zeit.bis)} | {t.typ} | {lva_name} | {raum_name}{grp}{ap}{note}")
+        end_time = t.get_end_time() or t.start_zeit
+        print(f"- {t.id}: {fmt_date(t.datum)} {fmt_time(t.start_zeit)}–{fmt_time(end_time)} ({t.duration}min) | {t.typ} | {lva_name} | {raum_name}{grp}{ap}{note}")
 
 def print_free_slots(slots: List[Zeitfenster]) -> None:
     if not slots:

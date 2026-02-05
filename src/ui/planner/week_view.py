@@ -1,0 +1,375 @@
+from __future__ import annotations
+
+from datetime import date, time, timedelta
+from typing import Dict, List, Callable
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QBrush
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QDateEdit, QHeaderView, QSizePolicy
+
+from ...core.models import Termin
+from ..utils.datetime_utils import qdate_to_date, monday_of, fmt_time
+from .state import PlannerState
+from ..utils.datetime_utils import date_to_qdate
+from .cell import TimeSlotCell, TerminCard
+
+
+# --- grid config (adjust later if you want) ---
+GRID_MIN = 30
+DAY_START_H = 8
+DAY_END_H = 20  # exclusive
+
+
+def _time_slots() -> List[time]:
+    slots: List[time] = []
+    start = DAY_START_H * 60
+    end = DAY_END_H * 60
+    for m in range(start, end, GRID_MIN):
+        slots.append(time(hour=m // 60, minute=m % 60))
+    return slots
+
+
+def _mins(t: time) -> int:
+    return t.hour * 60 + t.minute
+
+
+# --- Option A: simple color mapping by type (background + foreground) ---
+TYPE_COLORS: Dict[str, QColor] = {
+    "VO": QColor("#E3F2FD"),  # light blue
+    "UE": QColor("#E8F5E9"),  # light green
+    "LU": QColor("#FFF3E0"),  # light orange
+    "SE": QColor("#F3E5F5"),  # light purple
+}
+DEFAULT_BG = QColor("#F7F7F7")
+DEFAULT_FG = QColor("#111111")
+
+
+class PlannerWeekView:
+    """
+    Shows a week grid (Mo–Sa) with time slots as rows.
+    Supports dropping a Termin (by id) onto a cell -> calls on_drop_cb(id, target_date, target_time).
+    Renders Termine as blocks spanning multiple rows based on duration (GRID_MIN).
+    """
+
+    def __init__(
+        self,
+        state: PlannerState,
+        week_table: QTableWidget,
+        week_from: QDateEdit,
+        edit_by_id_cb: Callable[[str], None],
+        on_drop_cb: Callable[[str, date, time], None],
+    ):
+        self.state = state
+        self.week_table = week_table
+        self.week_from = week_from
+        self.edit_by_id_cb = edit_by_id_cb
+        self.on_drop_cb = on_drop_cb
+
+        # if using WeekDropTable, it has terminDropped(str,int,int)
+        if hasattr(self.week_table, "terminDropped"):
+            self.week_table.terminDropped.connect(self._on_termin_dropped)
+        if hasattr(self.week_table, "set_duration_preview_provider"):
+            def _dur_provider(tid: str) -> int:
+                t = self.state.termin_map.get(tid)
+                return int(t.duration) if t else 0
+            self.week_table.set_duration_preview_provider(_dur_provider, GRID_MIN)
+        if hasattr(self.week_table, "set_color_provider"):
+            def _color_provider(tid: str) -> QColor:
+                t = self.state.termin_map.get(tid)
+                if t:
+                    typ = (t.typ or "").strip().upper()
+                    return TYPE_COLORS.get(typ, DEFAULT_BG)
+                return DEFAULT_BG
+            self.week_table.set_color_provider(_color_provider)
+        if hasattr(self.week_table, "set_text_provider"):
+            def _text_provider(tid: str) -> str:
+                t = self.state.termin_map.get(tid)
+                if not t or not t.start_zeit or not t.get_end_time():
+                    return ""
+                lva = self.state.lva_map.get(t.lva_id)
+                lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
+                room_s = f"{t.raum_id}"
+                gname = (t.gruppe.name if t.gruppe else "")
+                grp = "" if (not gname or gname == "-") else f" Gr.{gname}"
+                ap = " AP" if t.anwesenheitspflicht else ""
+                return f"{fmt_time(t.start_zeit)}–{fmt_time(t.get_end_time())} {t.typ} | {room_s} | {lva_short}{grp}{ap}"
+            self.week_table.set_text_provider(_text_provider)
+
+        self._setup_table()
+        self.week_table.cellDoubleClicked.connect(self._on_double_click)
+        self.week_table.cellClicked.connect(self._on_cell_clicked)
+
+    def _setup_table(self) -> None:
+        t = self.week_table
+        t.setWordWrap(True)
+        t.setTextElideMode(Qt.ElideRight)
+
+        t.setShowGrid(True)
+        t.verticalHeader().setVisible(False)
+        t.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        t.setSizeAdjustPolicy(QTableWidget.AdjustToContentsOnFirstShow)
+
+        # Disable selection to avoid conflicts with cell widgets
+        t.setSelectionMode(QTableWidget.NoSelection)
+        t.setFocusPolicy(Qt.NoFocus)
+
+        h = t.horizontalHeader()
+        v = t.verticalHeader()
+
+        h.setStretchLastSection(False)
+        v.setSectionResizeMode(QHeaderView.Fixed)
+        
+        self.week_table.verticalHeader().setDefaultSectionSize(26)
+
+
+    def refresh(self, filtered_termine: List[Termin]) -> None:
+        week_mo = monday_of(qdate_to_date(self.week_from.date()))
+        week_su = week_mo + timedelta(days=6)
+
+        # keep Mo–Sa only
+        terms = [
+            t for t in filtered_termine
+            if t.datum is not None
+            and week_mo <= t.datum <= week_su
+            and t.datum.weekday() <= 5
+        ]
+
+        self._build_week_table(week_mo, terms)
+
+    def _build_week_table(self, week_mo: date, terms: List[Termin]) -> None:
+        # store current week monday on table (handy in other places)
+        if hasattr(self.week_table, "week_monday_qdate"):
+            self.week_table.week_monday_qdate = date_to_qdate(week_mo)
+
+        days = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
+        slots = _time_slots()
+
+        # ✅ Clear all cell widgets before rebuilding
+        for row in range(self.week_table.rowCount()):
+            for col in range(self.week_table.columnCount()):
+                widget = self.week_table.cellWidget(row, col)
+                if widget:
+                    self.week_table.removeCellWidget(row, col)
+                    widget.deleteLater()
+
+        self.week_table.setRowCount(len(slots))
+        self.week_table.setColumnCount(1 + len(days))
+        self.week_table.setHorizontalHeaderLabels(["Zeit"] + days)
+
+        # header sizing: time column compact, days stretch
+        h = self.week_table.horizontalHeader()
+        h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        for c in range(1, 1 + len(days)):
+            h.setSectionResizeMode(c, QHeaderView.Stretch)
+
+        # time column
+        for r, tt in enumerate(slots):
+            it = QTableWidgetItem(f"{tt.hour:02d}:{tt.minute:02d}")
+            it.setFlags(it.flags() & ~Qt.ItemIsEditable)
+            it.setTextAlignment(Qt.AlignRight | Qt.AlignTop)
+            self.week_table.setItem(r, 0, it)
+
+        # ✅ clear spans properly (no warnings)
+        self.week_table.clearSpans()
+
+        # render existing Termine into grid as blocks
+        by_day: Dict[date, List[Termin]] = {}
+        for t in terms:
+            by_day.setdefault(t.datum, []).append(t)
+        for d in by_day:
+            by_day[d].sort(key=lambda x: x.start_zeit)
+
+        for col in range(6):
+            d0 = week_mo + timedelta(days=col)
+            items = by_day.get(d0, [])
+
+            if not items:
+                continue
+
+            # Group overlapping/concurrent appointments
+            appointment_groups = self._group_concurrent_appointments(items, slots)
+
+            # Build a mapping of group_id -> list of appointments
+            groups_by_id: Dict[int, List[Termin]] = {}
+            for termin, group_id in appointment_groups:
+                if group_id not in groups_by_id:
+                    groups_by_id[group_id] = []
+                groups_by_id[group_id].append(termin)
+
+            # Process each group in a single spanned cell; offset cards by start time
+            for group_id, group_appointments in groups_by_id.items():
+                valid_apps = [
+                    app for app in group_appointments
+                    if isinstance(app.start_zeit, time)
+                    and app.get_end_time() is not None
+                ]
+                if not valid_apps:
+                    continue
+
+                group_start_min = min(_mins(app.start_zeit) for app in valid_apps)
+                group_end_min = max(_mins(app.get_end_time()) for app in valid_apps)
+
+                if group_end_min <= group_start_min:
+                    continue
+
+                start_t = time(hour=group_start_min // 60, minute=group_start_min % 60)
+                if start_t not in slots:
+                    continue
+
+                row = slots.index(start_t)
+                col_idx = 1 + col
+
+                total_dur = group_end_min - group_start_min
+                max_span = max(1, (total_dur + GRID_MIN - 1) // GRID_MIN)
+                max_span = min(max_span, len(slots) - row)
+
+                cell_widget = TimeSlotCell(d0)
+                self.week_table.setCellWidget(row, col_idx, cell_widget)
+
+                if max_span > 1:
+                    try:
+                        self.week_table.setSpan(row, col_idx, max_span, 1)
+                    except:
+                        pass
+
+                row_height = self.week_table.rowHeight(row)
+                cell_widget.set_grid_info(row_height, max_span)
+
+                for app in valid_apps:
+                    app_start = _mins(app.start_zeit)
+                    app_end = _mins(app.get_end_time())
+                    if app_end <= app_start:
+                        continue
+
+                    offset_rows = max(0, (app_start - group_start_min) // GRID_MIN)
+                    app_dur = app_end - app_start
+                    app_span_rows = max(1, (app_dur + GRID_MIN - 1) // GRID_MIN)
+                    app_span_rows = min(app_span_rows, len(slots) - row - offset_rows)
+
+                    app_text = self._format_termin_text(app)
+                    typ = (app.typ or "").strip().upper()
+                    bg = TYPE_COLORS.get(typ, DEFAULT_BG)
+                    card = TerminCard(app.id, app_text, bg, self.week_table)
+                    card.doubleClicked.connect(self.edit_by_id_cb)
+
+                    card_pixel_height = app_span_rows * row_height
+                    border_px = 1
+                    inner_height = max(1, card_pixel_height - (2 * border_px))
+                    card.setFixedHeight(inner_height)
+                    card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+                    top_offset_px = offset_rows * row_height
+                    cell_widget.add_termin_card(card, top_offset_px=top_offset_px)
+
+
+    def _on_double_click(self, row: int, col: int):
+        if col <= 0:
+            return
+        # Get the cell widget instead of item
+        cell_widget = self.week_table.cellWidget(row, col)
+        if isinstance(cell_widget, TimeSlotCell):
+            # If there are termin cards, edit the first one
+            termin_ids = cell_widget.get_termin_ids()
+            if termin_ids:
+                self.edit_by_id_cb(termin_ids[0])
+        else:
+            # Fallback for items
+            it = self.week_table.item(row, col)
+            if not it:
+                return
+            tid = it.data(Qt.UserRole)
+            if tid:
+                self.edit_by_id_cb(str(tid))
+
+    def _on_cell_clicked(self, row: int, col: int) -> None:
+        # Clear focus when clicking empty calendar cells
+        if col <= 0:
+            TerminCard.clear_global_focus()
+            return
+        cell_widget = self.week_table.cellWidget(row, col)
+        if isinstance(cell_widget, TimeSlotCell):
+            if not cell_widget.get_termin_ids():
+                TerminCard.clear_global_focus()
+        else:
+            TerminCard.clear_global_focus()
+
+    def _group_concurrent_appointments(self, items: List[Termin], slots: List[time]) -> List[tuple]:
+        """
+        Group appointments by time overlap.
+        Returns list of (termin, group_id) tuples.
+        All appointments with the same group_id overlap with each other.
+        """
+        if not items:
+            return []
+
+        # Sweep-line grouping to include transitive overlaps
+        sorted_items = sorted(
+            items,
+            key=lambda x: _mins(x.start_zeit) if x.start_zeit else 0
+        )
+
+        groups: List[tuple] = []
+        group_counter = 0
+        current_group: List[Termin] = []
+        current_end = None
+
+        for t in sorted_items:
+            if not t.start_zeit or not t.get_end_time():
+                continue
+
+            t_start = _mins(t.start_zeit)
+            t_end = _mins(t.get_end_time())
+
+            if current_end is None:
+                current_group = [t]
+                current_end = t_end
+                continue
+
+            if t_start < current_end:
+                current_group.append(t)
+                current_end = max(current_end, t_end)
+            else:
+                for member in current_group:
+                    groups.append((member, group_counter))
+                group_counter += 1
+                current_group = [t]
+                current_end = t_end
+
+        if current_group:
+            for member in current_group:
+                groups.append((member, group_counter))
+
+        return groups
+
+    def _format_termin_text(self, t: Termin) -> str:
+        """Format appointment text for display."""
+        end_raw = t.get_end_time()
+        lva = self.state.lva_map.get(t.lva_id)
+        lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
+        room_s = f"{t.raum_id}"
+        gname = (t.gruppe.name if t.gruppe else "")
+        grp = "" if (not gname or gname == "-") else f" Gr.{gname}"
+        ap = " AP" if t.anwesenheitspflicht else ""
+
+        return (
+            f"{fmt_time(t.start_zeit)}–{fmt_time(end_raw)} "
+            f"{t.typ} | {room_s} | {lva_short}{grp}{ap}"
+        )
+
+    def _on_termin_dropped(self, termin_id: str, row: int, col: int) -> None:
+        # col 0 ist Zeit-Spalte
+        if col <= 0:
+            return
+
+        week_mo = monday_of(qdate_to_date(self.week_from.date()))
+        day_offset = col - 1  # Mo..Sa
+        target_date = week_mo + timedelta(days=day_offset)
+
+        slots = _time_slots()
+        if row < 0 or row >= len(slots):
+            return
+        target_start = slots[row]
+
+        # View macht NUR callback (Workspace entscheidet Speichern + Reload + Refresh)
+        self.on_drop_cb(str(termin_id), target_date, target_start)

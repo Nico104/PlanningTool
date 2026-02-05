@@ -11,13 +11,13 @@ from PySide6.QtWidgets import (
     QScrollArea, QComboBox, QLabel, QMenu, QPushButton, QFrame
 )
 
-from ...ui.utils.datetime_utils import fmt_date, fmt_time
-from ...models.models import Termin, Lehrveranstaltung, Raum
-from ..termine.termin_card import TerminCard
+from ..utils.datetime_utils import fmt_date, fmt_time
+from ...core.models import Termin, Lehrveranstaltung, Raum
+from ..components.cards.termin_card import TerminCard
 
 
-from ..utils.widgets.tight_combobox import TightComboBox
-from ..planner.planner_actions import PlannerActions
+from ..components.widgets.tight_combobox import TightComboBox
+from ..planner.actions import PlannerActions
 
 
 class _TerminDropContainer(QWidget):
@@ -151,9 +151,9 @@ class TermineDock(QDockWidget):
         from datetime import date as _date, time as _time
 
         def _sort_key(t: Termin):
-            unassigned = (t.datum is None) or (t.zeit is None)
+            unassigned = (t.datum is None) or (t.start_zeit is None)
             d = t.datum or _date.min
-            von = (t.zeit.von if t.zeit and t.zeit.von else _time.min)
+            von = (t.start_zeit if t.start_zeit else _time.min)
             return (not unassigned, d, von, t.id)
 
         terms = sorted(terms, key=_sort_key)
@@ -167,9 +167,10 @@ class TermineDock(QDockWidget):
 
             # date/time display (safe for None)
             date_text = fmt_date(t.datum)
+            end_time = t.get_end_time()
             time_text = (
-                f"{fmt_time(t.zeit.von)} – {fmt_time(t.zeit.bis)}"
-                if t.zeit and (t.zeit.von or t.zeit.bis)
+                f"{fmt_time(t.start_zeit)} – {fmt_time(end_time)} ({t.duration} min)"
+                if t.start_zeit and end_time
                 else ""
             )
 
@@ -181,6 +182,7 @@ class TermineDock(QDockWidget):
                 typ=t.typ,
                 raum=raum_txt,
                 ap=t.anwesenheitspflicht,
+                duration=t.get_duration_minutes(),
                 parent=self.container,
             )
 

@@ -1,4 +1,4 @@
-from src.ui.main_window import run_gui
+from src.ui.windows.main_window import run_gui
 
 import src.ui.resources_rc  # type: ignore
 
