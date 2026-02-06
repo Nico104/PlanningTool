@@ -366,6 +366,18 @@ QTableWidget::item:selected {
   border: none;
 }
 
+/* Planner tables: no blue selection fill */
+QTableWidget#PlannerTable::item:selected,
+QTableWidget#PlannerTable::item:selected:!active {
+  background: transparent;
+  color: #111111;
+}
+
+QTableWidget#PlannerTable QAbstractItemView {
+  selection-background-color: transparent;
+  selection-color: #111111;
+}
+
 /* Conflict cards (same style language as TerminCard) */
 QFrame#ConflictCard {
   background: #ffffff;

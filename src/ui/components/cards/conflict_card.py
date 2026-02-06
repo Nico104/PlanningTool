@@ -4,7 +4,6 @@ from PySide6.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QFrame
 
 class ConflictCard(QFrame):
     clicked = Signal(list)
-    double_clicked = Signal(list)
 
     def __init__(
         self,
@@ -66,10 +65,6 @@ class ConflictCard(QFrame):
 
         chips.addStretch(1)
         root.addLayout(chips)
-
-    def mouseDoubleClickEvent(self, e) -> None:
-        self.double_clicked.emit(self.termin_ids)
-        super().mouseDoubleClickEvent(e)
 
     def mousePressEvent(self, e) -> None:
         if e.button() == Qt.LeftButton:

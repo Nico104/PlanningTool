@@ -7,9 +7,9 @@ class TerminDragTable(QTableWidget):
     """
     Drag source for Termine.
     - Put the termin id into column 0 (hidden is OK).
-    - User can drag any row; we emit mime: application/x-termin-id
+    - User can drag any row; we emit mime: application/termin-id
     """
-    MIME = "application/x-termin-id"
+    MIME = "application/termin-id"
 
     def __init__(self, parent=None):
         super().__init__(parent)

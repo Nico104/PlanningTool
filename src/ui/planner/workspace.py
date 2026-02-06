@@ -2,7 +2,7 @@ from datetime import date, timedelta
 from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtGui import QColor, QBrush, QPalette
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QDateEdit, QLabel,
     QPushButton, QStackedWidget, QTableWidget, QTableWidgetItem
@@ -78,8 +78,12 @@ class PlannerWorkspace(QWidget):
         self.stack = QStackedWidget()
         root.addWidget(self.stack, 1)
 
-        self.day_table = QTableWidget(0, 0)
+        self.day_table = WeekDropTable(0, 0)
         self.week_table = WeekDropTable(0, 0)
+        self.day_table.setObjectName("PlannerTable")
+        self.week_table.setObjectName("PlannerTable")
+        self._apply_planner_table_palette(self.day_table)
+        self._apply_planner_table_palette(self.week_table)
         self.day_table.setSortingEnabled(False)
         self.week_table.setSortingEnabled(False)
         self.day_table.setAlternatingRowColors(False)
@@ -119,6 +123,7 @@ class PlannerWorkspace(QWidget):
             friday_lbl=self.friday_lbl,
             conflict_lbl=self.conflict_lbl,
             edit_by_id_cb=self._edit_termin_by_id,
+            on_drop_cb=self._on_day_drop,
             current_filters_cb=self.current_filters,
         )
         self.week_view = PlannerWeekView(
@@ -175,6 +180,12 @@ class PlannerWorkspace(QWidget):
         refreshes current view, and notifies main window to refresh docks.
         """
         self.refresh(emit=True)
+
+    def _apply_planner_table_palette(self, table: QTableWidget) -> None:
+        pal = QPalette(table.palette())
+        pal.setColor(QPalette.Highlight, QColor(0, 0, 0, 0))
+        pal.setColor(QPalette.HighlightedText, QColor("#111111"))
+        table.setPalette(pal)
 
     # ─────────────────────────────────────────────────────────────
     # navigation logic
@@ -261,9 +272,19 @@ class PlannerWorkspace(QWidget):
         self.day_date.setVisible(is_day)
         self.week_from.setVisible(not is_day)
 
-        if not is_day:
-            wf = self._qdate_to_pydate(self.week_from.date())
-            self.week_from.setDate(date_to_qdate(self._align_to_monday(wf)))
+        if is_day:
+            # When switching to day view, ensure day_date is within the viewed week
+            current_day = self._qdate_to_pydate(self.day_date.date())
+            week_start = self._qdate_to_pydate(self.week_from.date())
+            week_end = week_start + timedelta(days=6)
+            # If current day is outside the week range, set it to the week start
+            if not (week_start <= current_day <= week_end):
+                self.day_date.setDate(date_to_qdate(week_start))
+        else:
+            # When switching to week view, sync with the day that was being viewed
+            current_day = self._qdate_to_pydate(self.day_date.date())
+            week_start = self._align_to_monday(current_day)
+            self.week_from.setDate(date_to_qdate(week_start))
 
         # view switching should not refresh external docks/terminliste
         self.refresh(emit=False)
@@ -329,9 +350,16 @@ class PlannerWorkspace(QWidget):
             self.clear_conflict_highlights()
 
     def _on_day_cell_clicked(self, row: int, col: int) -> None:
-        it = self.day_table.item(row, col)
-        if not it or not it.data(Qt.UserRole):
-            self.clear_conflict_highlights()
+        # Check if cell widget (new TimeSlotCell approach)
+        cell_widget = self.day_table.cellWidget(row, col)
+        if isinstance(cell_widget, TimeSlotCell):
+            if not cell_widget.get_termin_ids():
+                self.clear_conflict_highlights()
+        else:
+            # Fallback for old item-based approach
+            it = self.day_table.item(row, col)
+            if not it or not it.data(Qt.UserRole):
+                self.clear_conflict_highlights()
 
     def _jump_to_first_termin(self, ids: set[str]) -> None:
         t = None
@@ -365,19 +393,31 @@ class PlannerWorkspace(QWidget):
                             first_focused = True
 
     def _highlight_day_cells(self, ids: set[str]) -> None:
+        first_focused = False
         rows = self.day_table.rowCount()
         cols = self.day_table.columnCount()
         highlight_brush = QBrush(QColor(255, 244, 204))
         self._day_highlights = []
         for r in range(rows):
             for c in range(cols):
-                it = self.day_table.item(r, c)
-                if not it:
-                    continue
-                tid = it.data(Qt.UserRole)
-                if tid and str(tid) in ids:
-                    it.setBackground(highlight_brush)
-                    self._day_highlights.append((r, c))
+                # Check for cell widgets (new TimeSlotCell approach)
+                cell_widget = self.day_table.cellWidget(r, c)
+                if isinstance(cell_widget, TimeSlotCell):
+                    for card in cell_widget.findChildren(TerminCard):
+                        if card.termin_id in ids:
+                            card.set_conflict_highlight(True)
+                            if not first_focused:
+                                card.setFocus()
+                                first_focused = True
+                else:
+                    # Fallback for old item-based approach
+                    it = self.day_table.item(r, c)
+                    if not it:
+                        continue
+                    tid = it.data(Qt.UserRole)
+                    if tid and str(tid) in ids:
+                        it.setBackground(highlight_brush)
+                        self._day_highlights.append((r, c))
 
     def _clear_day_highlights(self) -> None:
         if not hasattr(self, "_day_highlights"):
@@ -393,3 +433,8 @@ class PlannerWorkspace(QWidget):
         # IMPORTANT: move_termin MUST persist changes.
         if self.actions.move_termin(termin_id, new_date=new_date, new_start=new_start):
             self.reload_and_refresh_everything()  # NEW
+
+    def _on_day_drop(self, termin_id, new_date, new_start, new_room_id=None):
+        # Handle drops in day view (including room changes)
+        if self.actions.move_termin(termin_id, new_date=new_date, new_start=new_start, new_room_id=new_room_id):
+            self.reload_and_refresh_everything()

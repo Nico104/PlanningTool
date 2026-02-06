@@ -8,7 +8,7 @@ from datetime import date
 
 class TerminCard(QLabel):
     """A compact card widget for displaying a single termin."""
-    MIME = "application/x-termin-id"
+    MIME = "application/termin-id"
     doubleClicked = Signal(str)  # Emits termin_id
     _focused_card_ref: weakref.ref | None = None
     _highlighted_refs: list[weakref.ref] = []

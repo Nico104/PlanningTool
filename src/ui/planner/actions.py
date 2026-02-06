@@ -60,9 +60,9 @@ class PlannerActions:
         self.state.ds.save_termine(self.state.termine)
         return True
     
-    def move_termin(self, termin_id: str, new_date: date, new_start: time) -> bool:
+    def move_termin(self, termin_id: str, new_date: date, new_start: time, new_room_id: str = None) -> bool:
         """
-        Move termin to new_date + new_start.
+        Move termin to new_date + new_start (and optionally new_room_id).
         - keeps duration in minutes
         - if unassigned duration -> default 30 minutes
         - persists via DataService.save_termine
@@ -77,12 +77,17 @@ class PlannerActions:
         # ✅ Update termin (try dataclass replace, else mutate)
         try:
             # if Termin is a dataclass, this is clean
-            new_t = replace(t, datum=new_date, start_zeit=new_start, duration=duration_minutes)
+            updates = {'datum': new_date, 'start_zeit': new_start, 'duration': duration_minutes}
+            if new_room_id is not None:
+                updates['raum_id'] = new_room_id
+            new_t = replace(t, **updates)
         except Exception:
             # fallback if Termin isn't a dataclass
             t.datum = new_date
             t.start_zeit = new_start
             t.duration = duration_minutes
+            if new_room_id is not None:
+                t.raum_id = new_room_id
             new_t = t
 
         # replace in list

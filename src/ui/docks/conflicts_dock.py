@@ -19,10 +19,10 @@ from ..components.widgets.tight_combobox import TightComboBox
 
 
 class ConflictsDock(QDockWidget):
-    """Dock widget for displaying schedule conflicts and warnings."""
+    """
+    Dock widget for displaying conflicts and warnings
+    """
     
-    # Signal emitted when user double-clicks an issue - passes termin_id
-    conflict_item_activated = Signal(str)
     # Signal emitted to highlight all related termine
     conflict_items_highlight = Signal(list)
 
@@ -183,7 +183,6 @@ class ConflictsDock(QDockWidget):
                 parent=self.cards_container,
             )
             card.clicked.connect(self._on_card_clicked)
-            card.double_clicked.connect(self._on_card_clicked)
             self.cards_layout.insertWidget(self.cards_layout.count() - 1, card)
 
     def _clear_cards(self) -> None:

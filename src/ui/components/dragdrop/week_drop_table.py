@@ -1,77 +1,3 @@
-# from __future__ import annotations
-
-# from PySide6.QtCore import Qt, Signal, QPoint
-# from PySide6.QtGui import QDropEvent
-# from PySide6.QtWidgets import QTableWidget
-
-
-# class WeekDropTable(QTableWidget):
-#     """
-#     Drop target for Termine.
-#     Emits: (termin_id, row, col) based on drop position.
-#     """
-#     terminDropped = Signal(str, int, int)
-#     MIME = "application/x-termin-id"
-
-#     def __init__(self, rows: int, cols: int, parent=None):
-#         super().__init__(rows, cols, parent)
-#         self.setAcceptDrops(True)
-#         # self.setDragDropMode(QTableWidget.DropOnly)
-#         # self.setDefaultDropAction(Qt.MoveAction)
-        
-#         self.setDragEnabled(True)
-#         self.setDragDropMode(QTableWidget.DragDrop)
-#         self.setDefaultDropAction(Qt.MoveAction)
-#         self.setSelectionMode(QTableWidget.SingleSelection)
-
-#     def dragEnterEvent(self, e):
-#         if e.mimeData().hasFormat(self.MIME):
-#             e.acceptProposedAction()
-#         else:
-#             e.ignore()
-
-#     def dragMoveEvent(self, e):
-#         if e.mimeData().hasFormat(self.MIME):
-#             e.acceptProposedAction()
-#         else:
-#             e.ignore()
-
-#     def dropEvent(self, e: QDropEvent):
-#         md = e.mimeData()
-#         if not md.hasFormat(self.MIME):
-#             e.ignore()
-#             return
-
-#         termin_id = bytes(md.data(self.MIME)).decode("utf-8").strip()
-
-#         pos: QPoint = e.position().toPoint()  # Qt6
-#         r = self.rowAt(pos.y())
-#         c = self.columnAt(pos.x())
-#         if r < 0 or c < 0:
-#             e.ignore()
-#             return
-
-#         self.terminDropped.emit(termin_id, r, c)
-#         e.acceptProposedAction()
-        
-#     def startDrag(self, supportedActions):
-#         it = self.currentItem()
-#         if not it:
-#             return
-#         termin_id = it.data(Qt.UserRole)
-#         if not termin_id:
-#             return  # empty cell
-
-#         from PySide6.QtGui import QDrag
-#         from PySide6.QtCore import QMimeData
-
-#         drag = QDrag(self)
-#         mime = QMimeData()
-#         mime.setData(self.MIME, str(termin_id).encode("utf-8"))
-#         drag.setMimeData(mime)
-#         drag.exec(Qt.MoveAction)
-
-
 from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect
 from PySide6.QtGui import QDropEvent, QDragMoveEvent, QPainter, QPen, QColor
 from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QTableWidgetSelectionRange
@@ -85,25 +11,21 @@ class WeekDropTable(QTableWidget):
     Emits: (termin_id, row, col) based on drop position.
     """
     terminDropped = Signal(str, int, int)
-    MIME = "application/x-termin-id"
+    MIME = "application/termin-id"
 
     def __init__(self, rows: int, cols: int, parent=None):
         super().__init__(rows, cols, parent)
 
         self.setAcceptDrops(True)
 
-        # If this table is ONLY a drop target, you can turn dragging off.
-        # But if you also want to drag from the calendar, keep it enabled.
         self.setDragEnabled(True)
         self.setDragDropMode(QAbstractItemView.DragDrop)
         self.setDefaultDropAction(Qt.MoveAction)
 
-        # Needed so current-cell highlight can be used as "snap preview"
-        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.setSelectionBehavior(QAbstractItemView.SelectItems)
-
-        # Qt's default drop indicator is often too subtle; we do our own.
-        self.setDropIndicatorShown(False)
+        # self.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        # self.setSelectionBehavior(QAbstractItemView.SelectItems)
+        
+        # self.setDropIndicatorShown(False)
 
         # Track current hover target during drag
         self._hover_row = -1
@@ -111,19 +33,21 @@ class WeekDropTable(QTableWidget):
         self._hover_span = 1
         self._hover_termin_id = None
 
-        # Duration preview config
+        # preview config
         self._duration_provider = None
         self._color_provider = None
         self._text_provider = None
         self._slot_minutes = 30
 
-        # Small edge auto-scroll while dragging
+        # Drag outisde table broders, autoscroll
         self._auto_scroll_timer = QTimer(self)
         self._auto_scroll_timer.setInterval(25)
         self._auto_scroll_timer.timeout.connect(self._auto_scroll_tick)
         self._last_drag_pos: QPoint | None = None
 
-    # ---------- DnD ----------
+    # Drag and Drop
+    
+    # Accept valid Termin drags and start edge auto-scroll
     def dragEnterEvent(self, e):
         if e.mimeData().hasFormat(self.MIME):
             e.acceptProposedAction()
@@ -131,11 +55,14 @@ class WeekDropTable(QTableWidget):
         else:
             e.ignore()
 
+    # Stop auto-scroll and clear hover preview when drag leaves the table
     def dragLeaveEvent(self, e):
         self._auto_scroll_timer.stop()
         self._set_hover(-1, -1)
         super().dragLeaveEvent(e)
 
+
+    # Update hover preview while dragging over the grid (does the snapping to the grid)
     def dragMoveEvent(self, e: QDragMoveEvent):
         if not e.mimeData().hasFormat(self.MIME):
             e.ignore()
@@ -163,10 +90,10 @@ class WeekDropTable(QTableWidget):
             e.ignore()
             return
 
-        # SNAP: update hover target + selection highlight
         self._set_hover(r, c, span)
         e.acceptProposedAction()
 
+    # emit termin + target cell, then clear hover/scroll.
     def dropEvent(self, e: QDropEvent):
         md = e.mimeData()
         if not md.hasFormat(self.MIME):
@@ -188,7 +115,9 @@ class WeekDropTable(QTableWidget):
         self.terminDropped.emit(termin_id, r, c)
         e.acceptProposedAction()
 
-    # ---------- Snap hover helpers ----------
+    # Snap hover helpers
+    
+    # Update selection range and repaint hover preview
     def _set_hover(self, r: int, c: int, span: int = 1):
         if r == self._hover_row and c == self._hover_col and span == self._hover_span:
             return
@@ -202,14 +131,14 @@ class WeekDropTable(QTableWidget):
             self.clearSelection()
             self.setCurrentCell(-1, -1)
 
-        # trigger repaint so we can draw preview border
+        # trigger repaint
         self.viewport().update()
 
+    # Scroll when dragging near edges of the viewport
     def _auto_scroll_tick(self):
         if self._last_drag_pos is None:
             return
-
-        # Scroll when dragging near edges of the viewport
+        
         margin = 20
         dy = 0
         dx = 0
@@ -246,7 +175,7 @@ class WeekDropTable(QTableWidget):
         """Set provider to resolve display text for a termin_id."""
         self._text_provider = provider
 
-    # ---------- Nice visible drop preview ----------
+    # Drop preview
     def paintEvent(self, e):
         super().paintEvent(e)
 
@@ -259,7 +188,7 @@ class WeekDropTable(QTableWidget):
         h = self.rowHeight(self._hover_row)
         rect = QRect(x, y, w, h)
 
-        # Expand rect to cover span rows for preview
+        # Expand rect to cover span rows
         end_row = min(self.rowCount() - 1, self._hover_row + max(1, self._hover_span) - 1)
         if end_row != self._hover_row:
             bottom_y = self.rowViewportPosition(end_row)
@@ -267,7 +196,7 @@ class WeekDropTable(QTableWidget):
             bottom_rect = QRect(x, bottom_y, w, bottom_h)
             rect = rect.united(bottom_rect)
 
-        # draw a filled preview block + crisp border around hovered span
+        # draw a filled preview block
         p = QPainter(self.viewport())
         p.setRenderHint(QPainter.Antialiasing, False)
 
@@ -282,7 +211,7 @@ class WeekDropTable(QTableWidget):
         p.setPen(Qt.NoPen)
         p.drawRect(rect.adjusted(1, 1, -1, -1))
 
-        # Draw text if provider available
+        # Draw text if available
         if self._text_provider and self._hover_termin_id:
             try:
                 text = self._text_provider(self._hover_termin_id)
@@ -292,6 +221,7 @@ class WeekDropTable(QTableWidget):
             except Exception:
                 pass
 
+        #border
         pen = QPen(Qt.black)
         pen.setWidth(2)
         p.setPen(pen)
@@ -299,19 +229,18 @@ class WeekDropTable(QTableWidget):
         p.drawRect(rect.adjusted(1, 1, -1, -1))
         p.end()
 
+    # Start a drag using the termin_id from the widget in the current cell
     def startDrag(self, supportedActions):
-        # Try to get the widget at current cell position
         current_row = self.currentRow()
         current_col = self.currentColumn()
         
         if current_row < 0 or current_col < 0:
             return
 
-        # Check if this is a cell widget (new TerminCard approach)
+        # Check if this is a cell widget
         cell_widget = self.cellWidget(current_row, current_col)
         if cell_widget:
-            # Try to extract termin_id from the widget
-            # If it's a TimeSlotCell, get the first termin card
+            #space behing the termin widget
             if hasattr(cell_widget, 'get_termin_ids'):
                 termin_ids = cell_widget.get_termin_ids()
                 if termin_ids:
@@ -319,25 +248,12 @@ class WeekDropTable(QTableWidget):
                 else:
                     return
             elif hasattr(cell_widget, 'termin_id'):
-                # If it's a TerminCard directly
+                # If it's a TerminCard directly, always the case
                 termin_id = cell_widget.termin_id
             else:
                 return
         else:
-            # Fallback to item-based approach for backwards compatibility
-            it = self.item(current_row, current_col)
-            if not it:
-                return
-
-            # Try to get termin id from item data
-            termin_id = it.data(self.Qt.UserRole) if hasattr(self, 'Qt') else it.data(0x0100)
-
-            # fallback (if you used text)
-            if not termin_id:
-                termin_id = (it.text() or "").strip()
-
-            if not termin_id:
-                return
+            return
 
         from PySide6.QtGui import QDrag
         from PySide6.QtCore import QMimeData

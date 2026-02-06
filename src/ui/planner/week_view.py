@@ -1,4 +1,4 @@
-from datetime import date, time, timedelta
+from datetime import date, time, timedelta, datetime
 from typing import Dict, List, Callable
 
 from PySide6.QtCore import Qt
@@ -10,21 +10,6 @@ from ..utils.datetime_utils import qdate_to_date, monday_of, fmt_time
 from .state import PlannerState
 from ..utils.datetime_utils import date_to_qdate
 from .cell import TimeSlotCell, TerminCard
-
-
-# --- grid config (adjust later if you want) ---
-GRID_MIN = 30
-DAY_START_H = 8
-DAY_END_H = 20  # exclusive
-
-
-def _time_slots() -> List[time]:
-    slots: List[time] = []
-    start = DAY_START_H * 60
-    end = DAY_END_H * 60
-    for m in range(start, end, GRID_MIN):
-        slots.append(time(hour=m // 60, minute=m % 60))
-    return slots
 
 
 def _mins(t: time) -> int:
@@ -67,10 +52,11 @@ class PlannerWeekView:
         if hasattr(self.week_table, "terminDropped"):
             self.week_table.terminDropped.connect(self._on_termin_dropped)
         if hasattr(self.week_table, "set_duration_preview_provider"):
+            slot_min = int(self.state.settings.get("time_slot_minutes", 30))
             def _dur_provider(tid: str) -> int:
                 t = self.state.termin_map.get(tid)
                 return int(t.duration) if t else 0
-            self.week_table.set_duration_preview_provider(_dur_provider, GRID_MIN)
+            self.week_table.set_duration_preview_provider(_dur_provider, slot_min)
         if hasattr(self.week_table, "set_color_provider"):
             def _color_provider(tid: str) -> QColor:
                 t = self.state.termin_map.get(tid)
@@ -97,6 +83,22 @@ class PlannerWeekView:
         self.week_table.cellDoubleClicked.connect(self._on_double_click)
         self.week_table.cellClicked.connect(self._on_cell_clicked)
 
+    def _day_bounds(self) -> tuple[time, time, int]:
+        s = self.state.settings
+        day_start = datetime.strptime(s.get("day_start", "08:00"), "%H:%M").time()
+        day_end = datetime.strptime(s.get("day_end", "20:00"), "%H:%M").time()
+        slot = int(s.get("time_slot_minutes", 30))
+        return day_start, day_end, slot
+
+    def _time_slots(self) -> List[time]:
+        day_start, day_end, slot_min = self._day_bounds()
+        slots: List[time] = []
+        start = day_start.hour * 60 + day_start.minute
+        end = day_end.hour * 60 + day_end.minute
+        for m in range(start, end, slot_min):
+            slots.append(time(hour=m // 60, minute=m % 60))
+        return slots
+
     def _setup_table(self) -> None:
         t = self.week_table
         t.setWordWrap(True)
@@ -108,9 +110,9 @@ class PlannerWeekView:
 
         t.setSizeAdjustPolicy(QTableWidget.AdjustToContentsOnFirstShow)
 
-        # Disable selection to avoid conflicts with cell widgets
-        t.setSelectionMode(QTableWidget.NoSelection)
-        t.setFocusPolicy(Qt.NoFocus)
+        # NOTE: Don't override selection mode - WeekDropTable needs it for drag & drop
+        # t.setSelectionMode(QTableWidget.NoSelection)
+        # t.setFocusPolicy(Qt.NoFocus)
 
         h = t.horizontalHeader()
         v = t.verticalHeader()
@@ -141,7 +143,8 @@ class PlannerWeekView:
             self.week_table.week_monday_qdate = date_to_qdate(week_mo)
 
         days = ["Mo", "Di", "Mi", "Do", "Fr", "Sa"]
-        slots = _time_slots()
+        slots = self._time_slots()
+        slot_min = self._day_bounds()[2]
 
         # ✅ Clear all cell widgets before rebuilding
         for row in range(self.week_table.rowCount()):
@@ -219,7 +222,7 @@ class PlannerWeekView:
                 col_idx = 1 + col
 
                 total_dur = group_end_min - group_start_min
-                max_span = max(1, (total_dur + GRID_MIN - 1) // GRID_MIN)
+                max_span = max(1, (total_dur + slot_min - 1) // slot_min)
                 max_span = min(max_span, len(slots) - row)
 
                 cell_widget = TimeSlotCell(d0)
@@ -240,9 +243,9 @@ class PlannerWeekView:
                     if app_end <= app_start:
                         continue
 
-                    offset_rows = max(0, (app_start - group_start_min) // GRID_MIN)
+                    offset_rows = max(0, (app_start - group_start_min) // slot_min)
                     app_dur = app_end - app_start
-                    app_span_rows = max(1, (app_dur + GRID_MIN - 1) // GRID_MIN)
+                    app_span_rows = max(1, (app_dur + slot_min - 1) // slot_min)
                     app_span_rows = min(app_span_rows, len(slots) - row - offset_rows)
 
                     app_text = self._format_termin_text(app)
@@ -364,7 +367,7 @@ class PlannerWeekView:
         day_offset = col - 1  # Mo..Sa
         target_date = week_mo + timedelta(days=day_offset)
 
-        slots = _time_slots()
+        slots = self._time_slots()
         if row < 0 or row >= len(slots):
             return
         target_start = slots[row]

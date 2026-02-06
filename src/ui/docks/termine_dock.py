@@ -22,7 +22,7 @@ class _TerminDropContainer(QWidget):
     Drop anywhere inside this container -> emit termin_id (unassign request).
     """
     terminDroppedToList = Signal(str)
-    MIME = "application/x-termin-id"
+    MIME = "application/termin-id"
 
     def __init__(self, parent=None):
         super().__init__(parent)

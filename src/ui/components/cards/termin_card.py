@@ -42,7 +42,7 @@ from PySide6.QtGui import QPainter, QPainterPath
 
 
 
-MIME_TERMIN_ID = "application/x-termin-id"
+MIME_TERMIN_ID = "application/termin-id"
 
 
 class TerminCard(QFrame):
