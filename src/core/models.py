@@ -107,7 +107,7 @@ class Konflikt:
 class ConflictIssue:
     """Represents a conflict or warning issue with scheduling."""
     severity: str  # "conflict" or "warning"
-    category: str  # "Raum", "Gruppe", "Vortragende", "Unvollständig", "Zeitraum"
+    category: str  # e.g. "room", "group", "lecturer", "incomplete", "time_period"
     termin_ids: List[str]  # one or two termin IDs involved
     message: str
     datum: Optional[date]

@@ -21,7 +21,7 @@ from ..dialogs.termin_dialog import TerminDialog
 
 # --------- kleine Helpers ---------
 
-def _it(text: str) -> QTableWidgetItem:
+def _make_item(text: str) -> QTableWidgetItem:
     it = QTableWidgetItem(text)
     it.setFlags(it.flags() & ~Qt.ItemIsEditable)
     return it
@@ -214,7 +214,7 @@ class DataEditorDock(QDockWidget):
                 ", ".join(getattr(l, "typ", []) or []),
             ]
             for c, v in enumerate(vals):
-                t.setItem(row, c, _it(str(v)))
+                t.setItem(row, c, _make_item(str(v)))
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()
@@ -230,7 +230,7 @@ class DataEditorDock(QDockWidget):
             t.insertRow(row)
             vals = [r.id, r.name, str(r.kapazitaet)]
             for c, v in enumerate(vals):
-                t.setItem(row, c, _it(str(v)))
+                t.setItem(row, c, _make_item(str(v)))
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()
@@ -248,7 +248,7 @@ class DataEditorDock(QDockWidget):
             t.insertRow(row)
             vals = [s.id, s.name, fmt_date(s.start), fmt_date(s.end)]
             for c, v in enumerate(vals):
-                t.setItem(row, c, _it(str(v)))
+                t.setItem(row, c, _make_item(str(v)))
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()
@@ -280,7 +280,7 @@ class DataEditorDock(QDockWidget):
 
             vals = [art, datum, von, bis, beschr]
             for c, v in enumerate(vals):
-                t.setItem(row, c, _it(str(v)))
+                t.setItem(row, c, _make_item(str(v)))
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()
@@ -327,7 +327,7 @@ class DataEditorDock(QDockWidget):
             ]
 
             for c, v in enumerate(vals):
-                t.setItem(row, c, _it(str(v)))
+                t.setItem(row, c, _make_item(str(v)))
 
         t.setSortingEnabled(True)
         t.resizeColumnsToContents()

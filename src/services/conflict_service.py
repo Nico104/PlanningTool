@@ -152,7 +152,7 @@ class ConflictDetector:
                 
                 warnings.append(ConflictIssue(
                     severity="warning",
-                    category="Unvollständig",
+                    category="incomplete",
                     termin_ids=[t.id],
                     message=msg,
                     datum=t.datum if t.datum and t.datum != UNASSIGNED_DATE else None,
@@ -185,7 +185,7 @@ class ConflictDetector:
                         # Ensure we report each pair only once
                         if t1.id < t2.id:
                             conflicts.append(self._create_conflict(
-                                "Raum", t1, t2, "Raum-Konflikt"
+                                "room", t1, t2, "Raum-Konflikt"
                             ))
         
         return conflicts
@@ -210,7 +210,7 @@ class ConflictDetector:
                     if self.times_overlap(t1, t2):
                         if t1.id < t2.id:
                             conflicts.append(self._create_conflict(
-                                "Gruppe", t1, t2, "Gruppen-Konflikt"
+                                "group", t1, t2, "Gruppen-Konflikt"
                             ))
         
         return conflicts
@@ -239,7 +239,7 @@ class ConflictDetector:
                     if self.times_overlap(t1, t2):
                         if t1.id < t2.id:
                             conflicts.append(self._create_conflict(
-                                "Vortragende", t1, t2, "Vortragenden-Konflikt"
+                                "lecturer", t1, t2, "Vortragenden-Konflikt"
                             ))
         
         return conflicts
@@ -265,7 +265,7 @@ class ConflictDetector:
                 
                 warnings.append(ConflictIssue(
                     severity="warning",
-                    category="Zeitraum",
+                    category="time_period",
                     termin_ids=[t.id],
                     message=msg,
                     datum=t.datum,
@@ -306,7 +306,7 @@ class ConflictDetector:
             datum=t1.datum,  # Both should have same date
             zeit_von=zeit_von,
             zeit_bis=zeit_bis,
-            raum=raum1_name if category == "Raum" else f"{raum1_name}, {raum2_name}",
+            raum=raum1_name if category == "room" else f"{raum1_name}, {raum2_name}",
             lva=f"{lva1_name}, {lva2_name}" if lva1_name != lva2_name else lva1_name,
             gruppe=""  # Could be enhanced to show both groups
         )

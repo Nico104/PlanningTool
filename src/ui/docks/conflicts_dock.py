@@ -3,11 +3,13 @@ Konflikte Dock Widget - displays schedule conflicts and warnings.
 """
 
 from typing import List, Dict, Optional
+from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QSize
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QComboBox, QScrollArea, QFrame
+    QLabel, QPushButton, QComboBox, QScrollArea, QFrame, QStyle
 )
 
 from ...core.models import Termin, Lehrveranstaltung, Raum, Semester, ConflictIssue
@@ -26,14 +28,22 @@ class ConflictsDock(QDockWidget):
     # Signal emitted to highlight all related termine
     conflict_items_highlight = Signal(list)
 
-    _CATEGORY_KINDS = {
-        "raum": "raum",
-        "vortragende": "vortragende",
-        "zeitraum": "zeitraum",
-        "gruppe": "gruppe",
+    _CATEGORY_LABELS = {
+        "room": "Raum",
+        "lecturer": "Vortragende",
+        "time_period": "Zeitraum",
+        "group": "Gruppe",
+        "semester": "Semester",
+        "incomplete": "Unvollstaendig",
+    }
+
+    _CATEGORY_KIND_MAP = {
+        "room": "raum",
+        "lecturer": "vortragende",
+        "time_period": "zeitraum",
+        "group": "gruppe",
         "semester": "semester",
-        "unvollständig": "unvollstaendig",
-        "unvollstaendig": "unvollstaendig",
+        "incomplete": "unvollstaendig",
     }
     
     def __init__(self, parent=None):
@@ -46,7 +56,7 @@ class ConflictsDock(QDockWidget):
         
         # Filter state
         self._filter_severity = "Alle"  # "Alle", "Konflikt", "Warnung"
-        self._filter_category = "Alle"   # "Alle" or specific category name
+        self._filter_category = "all"   # "all" or specific category key
         
         # Main widget
         main_widget = QWidget(self)
@@ -73,7 +83,9 @@ class ConflictsDock(QDockWidget):
         self.category_filter = TightComboBox()
         self.category_filter.setObjectName("HeaderCombo")
         self.category_filter.setMinimumWidth(220)
-        self.category_filter.addItem("Kategorie: Alle", "Alle")
+        self.category_filter.addItem("Kategorie: Alle", "all")
+        for key, label in self._CATEGORY_LABELS.items():
+            self.category_filter.addItem(f"Kategorie: {label}", key)
         self.category_filter.currentIndexChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.category_filter)
 
@@ -86,12 +98,26 @@ class ConflictsDock(QDockWidget):
         header.setSpacing(8)
         
         self.summary_label = QLabel("Keine Konflikte")
-        self.summary_label.setStyleSheet("font-weight: bold;")
+        self.summary_label.setObjectName("ConflictsSummary")
+        self.summary_label.setProperty("state", "ok")
         header.addWidget(self.summary_label)
         
         header.addStretch()
         
-        self.refresh_btn = QPushButton("Aktualisieren")
+        self.refresh_btn = QPushButton()
+        icon_path = (
+            Path(__file__).resolve().parent.parent
+            / "assets"
+            / "icons"
+            / "iconmonstr-reload-lined.svg"
+        )
+        if icon_path.is_file():
+            self.refresh_btn.setIcon(QIcon(str(icon_path)))
+        else:
+            self.refresh_btn.setIcon(self.style().standardIcon(QStyle.SP_BrowserReload))
+        self.refresh_btn.setToolTip("Aktualisieren")
+        self.refresh_btn.setFixedSize(26, 26)
+        self.refresh_btn.setIconSize(QSize(16, 16))
         self.refresh_btn.clicked.connect(self._on_refresh_clicked)
         header.addWidget(self.refresh_btn)
         
@@ -128,29 +154,29 @@ class ConflictsDock(QDockWidget):
         # Detect all issues
         self._issues = self._detector.detect_all(termine)
         
-        # Update category filter with unique categories
-        self._update_category_filter()
-        
         # Update summary (using all issues, not filtered)
         conflicts = [i for i in self._issues if i.severity == "conflict"]
         warnings = [i for i in self._issues if i.severity == "warning"]
         
         if not self._issues:
             summary = "✓ Keine Konflikte"
-            self.summary_label.setStyleSheet("font-weight: bold; color: green;")
+            state = "ok"
         else:
             summary = f"⚠ {len(conflicts)} Konflikt(e), {len(warnings)} Warnung(en)"
             if conflicts:
-                self.summary_label.setStyleSheet("font-weight: bold; color: #d32f2f;")
+                state = "conflict"
             else:
-                self.summary_label.setStyleSheet("font-weight: bold; color: #f57c00;")
+                state = "warning"
         
+        self.summary_label.setProperty("state", state)
+        # self.summary_label.style().unpolish(self.summary_label)
+        self.summary_label.style().polish(self.summary_label)
         self.summary_label.setText(summary)
         
         # Update cards with filtered results
         self._populate_cards()
+        
     def _populate_cards(self) -> None:
-        """Populate the card list with detected issues (applying filters)."""
         self._clear_cards()
 
         filtered_issues = self._apply_filters()
@@ -164,7 +190,8 @@ class ConflictsDock(QDockWidget):
                 zeit_str = fmt_time(issue.zeit_von)
 
             subtitle = f"{fmt_date(issue.datum)} · {zeit_str}".strip(" ·")
-            title = f"{type_text} · {issue.category}"
+            category_label = self._get_category_label(issue.category)
+            title = f"{type_text} · {category_label}"
 
             conflict_kind = self._get_conflict_kind(issue.category)
             termin_ids = [str(tid) for tid in issue.termin_ids] if issue.termin_ids else []
@@ -199,27 +226,23 @@ class ConflictsDock(QDockWidget):
             self.conflict_items_highlight.emit(termin_ids)
 
     def _get_conflict_kind(self, category: str) -> str:
-        cat = category.lower()
-        for key, kind in self._CATEGORY_KINDS.items():
-            if key in cat:
-                return kind
-        return "default"
+        return self._CATEGORY_KIND_MAP.get(category, "default")
+
+    def _get_category_label(self, category: str) -> str:
+        return self._CATEGORY_LABELS.get(category, category)
     
     def _on_refresh_clicked(self) -> None:
-        """Handle refresh button click - emit signal or trigger parent refresh."""
-        # This will be connected to the main window's refresh method
+        # connected to the main window's refresh method
         parent = self.parent()
         if parent and hasattr(parent, 'refresh_conflicts'):
             parent.refresh_conflicts()
     
     def _on_filter_changed(self) -> None:
-        """Handle filter dropdown changes."""
         self._filter_severity = self.severity_filter.currentData() or "Alle"
-        self._filter_category = self.category_filter.currentData() or "Alle"
+        self._filter_category = self.category_filter.currentData() or "all"
         self._populate_cards()
     
     def _apply_filters(self) -> List[ConflictIssue]:
-        """Apply current filters to issues list."""
         filtered = self._issues
         
         # Filter by severity
@@ -230,31 +253,8 @@ class ConflictsDock(QDockWidget):
         # "Alle" shows everything
         
         # Filter by category
-        if self._filter_category != "Alle":
+        if self._filter_category != "all":
             filtered = [i for i in filtered if i.category == self._filter_category]
         
         return filtered
     
-    def _update_category_filter(self) -> None:
-        """Update category filter dropdown with unique categories from current issues."""
-        # Store current selection
-        current = self.category_filter.currentData() or "Alle"
-        
-        # Get unique categories
-        categories = sorted(set(issue.category for issue in self._issues))
-        
-        # Update dropdown
-        self.category_filter.blockSignals(True)  # Prevent triggering filter change
-        self.category_filter.clear()
-        self.category_filter.addItem("Kategorie: Alle", "Alle")
-        for category in categories:
-            self.category_filter.addItem(f"Kategorie: {category}", category)
-        
-        # Restore selection if still valid
-        idx = self.category_filter.findData(current)
-        if idx >= 0:
-            self.category_filter.setCurrentIndex(idx)
-        else:
-            self.category_filter.setCurrentIndex(0)  # "Alle"
-        
-        self.category_filter.blockSignals(False)
