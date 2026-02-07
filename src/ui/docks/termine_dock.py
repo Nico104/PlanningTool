@@ -10,7 +10,7 @@ from ..utils.datetime_utils import fmt_date, fmt_time
 from ...core.models import Termin, Lehrveranstaltung, Raum
 from ..components.cards.termin_card import TerminCard
 from ..components.dragdrop.termin_drop_area import TerminDropArea
-
+from datetime import date as date, time as time
 
 class TermineDock(QDockWidget):
     termin_double_clicked = Signal(str)
@@ -56,7 +56,7 @@ class TermineDock(QDockWidget):
 
         self.setWidget(header)
 
-    # ---------- public ----------
+
     def set_rows(
         self,
         termine: List[Termin],
@@ -67,11 +67,9 @@ class TermineDock(QDockWidget):
         self._lva_map = dict(lva_map)
         self._raum_map = dict(raum_map)
 
-        # Global filtering is applied by MainWindow before calling set_rows.
-        # Just render the provided rows.
+        # Global filtering is applied by MainWindow before calling set_rows
         self._build_cards()
 
-    # ---------- rendering ----------
     def _build_cards(self) -> None:
         # clear old cards (leave last stretch)
         while self.list_layout.count() > 1:
@@ -80,16 +78,13 @@ class TermineDock(QDockWidget):
             if w:
                 w.deleteLater()
 
-        # MainWindow supplies already-filtered termine to set_rows(); render them.
+        # MainWindow supplies already-filtered termine to set_rows()
         terms = self._all_termine
-
-        # sort: unassigned first, then date/time
-        from datetime import date as _date, time as _time
 
         def _sort_key(t: Termin):
             unassigned = (t.datum is None) or (t.start_zeit is None)
-            d = t.datum or _date.min
-            von = (t.start_zeit if t.start_zeit else _time.min)
+            d = t.datum or date.min
+            von = (t.start_zeit if t.start_zeit else time.min)
             return (not unassigned, d, von, t.id)
 
         terms = sorted(terms, key=_sort_key)
@@ -127,15 +122,13 @@ class TermineDock(QDockWidget):
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, card)
 
-    # ---------- drop handling ----------
+
     def _on_drop_to_list(self, termin_id: str) -> None:
         """
-        Dropping a termin back into the list means: unassign it.
-        We don't change data here; we emit a signal so MainWindow/Handlers can persist.
+        Dropping a termin back into the list means: unassign it
         """
         self.termin_unassign_requested.emit(termin_id)
 
-    # ---------- context menu ----------
     def _open_menu(self, termin_id: str) -> None:
         menu = QMenu(self)
         act_edit = menu.addAction("Bearbeiten")

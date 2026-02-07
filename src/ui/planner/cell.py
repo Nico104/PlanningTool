@@ -28,6 +28,7 @@ class TerminCard(QLabel):
             "padding: 0px;"
             "border: none;"
             "font-size: 10px;"
+            "border-radius: 4px;"
         )
         self._apply_style()
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)

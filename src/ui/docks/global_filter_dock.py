@@ -113,7 +113,6 @@ class GlobalFilterDock(QDockWidget):
         self.viewChanged.emit(str(self.view_cb.currentData()))
 
     def refresh_filter_options(self, semester_list, lva_list, raum_list, typ_list=None, current: Optional[FilterState] = None) -> None:
-        """Populate dropdowns from provided lists and restore current selection if given."""
         cur_sem = current.semester_id if current else None
         cur_lva = current.lva_id if current else None
         cur_room = current.raum_id if current else None
