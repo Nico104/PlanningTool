@@ -4,6 +4,7 @@ import weakref
 from PySide6.QtGui import QColor, QBrush, QDrag, QPainter, QPen
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel
 from datetime import date
+from PySide6.QtGui import QPixmap
 
 
 class TerminCard(QLabel):
@@ -69,7 +70,7 @@ class TerminCard(QLabel):
         self._apply_style()
 
     def mousePressEvent(self, event):
-        """Start drag operation when user clicks on the card."""
+        #Start drag operation when user clicks on the card
         if event.button() == Qt.LeftButton:
             self.setFocus()
             self._drag_start_pos = event.pos()
@@ -95,15 +96,14 @@ class TerminCard(QLabel):
         super().focusOutEvent(event)
 
     def mouseReleaseEvent(self, event):
-        """Handle click if not dragging."""
+        #Handle click if not dragging
         if event.button() == Qt.LeftButton and not self._is_dragging:
-            # Not a drag, treat as a click
+            #handle click
             pass
         self._is_dragging = False
         super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        """Handle double click to edit."""
         if event.button() == Qt.LeftButton:
             self.doubleClicked.emit(self.termin_id)
             event.accept()
@@ -111,7 +111,6 @@ class TerminCard(QLabel):
             super().mouseDoubleClickEvent(event)
 
     def mouseMoveEvent(self, event):
-        """Handle drag when mouse moves while pressed."""
         if not (event.buttons() & Qt.LeftButton):
             return
         
@@ -131,8 +130,7 @@ class TerminCard(QLabel):
         mime.setData(self.MIME, str(self.termin_id).encode("utf-8"))
         drag.setMimeData(mime)
         
-        # Set a drag pixmap (optional but helps with visual feedback)
-        from PySide6.QtGui import QPixmap
+        # Set a drag pixmap
         pixmap = QPixmap(self.size())
         pixmap.fill(Qt.transparent)
         self.render(pixmap)
@@ -146,11 +144,6 @@ class TerminCard(QLabel):
 
 
 class TimeSlotCell(QWidget):
-    """
-    Container widget for a time slot cell in the calendar.
-    Displays appointments side-by-side (up to 2) at half-width each.
-    """
-
     def __init__(self, target_date: date, parent=None):
         super().__init__(parent)
         self.target_date = target_date
@@ -162,7 +155,7 @@ class TimeSlotCell(QWidget):
         self.layout.setSpacing(2)
         self.setLayout(self.layout)
         
-        # Background
+       
         self.setStyleSheet("background-color: transparent;")
 
     def set_grid_info(self, row_height: int, span_rows: int) -> None:
@@ -181,7 +174,6 @@ class TimeSlotCell(QWidget):
             painter.drawLine(0, y, self.width(), y)
 
     def add_termin_card(self, card: TerminCard, top_offset_px: int = 0) -> None:
-        """Add a termin card to this cell with an optional top offset."""
         wrapper = QWidget(self)
         wrapper.setContentsMargins(0, 0, 0, 0)
         vbox = QVBoxLayout(wrapper)
@@ -191,14 +183,12 @@ class TimeSlotCell(QWidget):
         self.layout.addWidget(wrapper, 1, Qt.AlignTop)  # align to top, equal horizontal space
 
     def clear_cards(self) -> None:
-        """Remove all termin cards from this cell."""
         while self.layout.count():
             item = self.layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
     def get_termin_ids(self) -> list[str]:
-        """Get all termin IDs in this cell."""
         ids = []
         for i in range(self.layout.count()):
             item = self.layout.itemAt(i)
