@@ -18,8 +18,8 @@
       "lva_id": "370.007",
       "semester_id": "SS2026",
       "typ": "VO",
-      "datum": "2026-05-13",
-      "start_zeit": "11:15",
+      "datum": null,
+      "start_zeit": null,
       "raum_id": "F01",
       "gruppe": null,
       "anwesenheitspflicht": false,
@@ -40,28 +40,12 @@
       "duration": 390
     },
     {
-      "id": "T004",
-      "lva_id": "410.101",
-      "semester_id": "SS2026",
-      "typ": "VO",
-      "datum": "2026-04-23",
-      "start_zeit": "11:40",
-      "raum_id": "E17",
-      "gruppe": {
-        "name": "",
-        "groesse": 1
-      },
-      "anwesenheitspflicht": false,
-      "notiz": "",
-      "duration": 150
-    },
-    {
       "id": "T005",
       "lva_id": "410.101",
       "semester_id": "SS2026",
       "typ": "LU",
-      "datum": "2026-04-23",
-      "start_zeit": "10:25",
+      "datum": null,
+      "start_zeit": null,
       "raum_id": "F01",
       "gruppe": {
         "name": "B",

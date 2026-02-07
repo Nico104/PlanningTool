@@ -1,7 +1,5 @@
 from typing import Optional
 
-from datetime import date, timedelta
-
 from PySide6.QtCore import Qt, Signal, QDate
 from PySide6.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QPushButton, QDateEdit
 
@@ -10,13 +8,16 @@ from ...core.states import FilterState
 
 
 class GlobalFilterDock(QDockWidget):
-    """Dockable widget that owns global filters and emits FilterState on changes.
-
-    Emits `filtersChanged` with a FilterState instance whenever a dropdown changes.
-    The dock does not mutate application state itself; it only emits the new state.
+    """
+    Dockable Global Header Bar
     """
 
     filtersChanged = Signal(object)
+    viewChanged = Signal(str)
+    navPrev = Signal()
+    navNext = Signal()
+    dayDateChanged = Signal(QDate)
+    weekFromChanged = Signal(QDate)
 
     def __init__(self, parent=None):
         super().__init__("Filter", parent)
@@ -49,7 +50,7 @@ class GlobalFilterDock(QDockWidget):
         headerBar.addWidget(self.room_cb)
         
         
-        # View selector + navigation + dates (moved from Planner header)
+        # View selector + navigation + dates
         self.view_cb = TightComboBox()
         self.view_cb.addItem("Wochen", "week")
         self.view_cb.addItem("Tag", "day")
@@ -67,7 +68,7 @@ class GlobalFilterDock(QDockWidget):
         headerBar.addWidget(self.next_btn)
 
         self.day_date = QDateEdit()
-        # self.day_date.setObjectName("HeaderDate")
+        self.day_date.setObjectName("DateEdit")
         self.day_date.setCalendarPopup(True)
         self.day_date.setDate(QDate.currentDate())
         self.day_date.setFixedWidth(150)
@@ -91,8 +92,11 @@ class GlobalFilterDock(QDockWidget):
         self.lva_cb.currentIndexChanged.connect(self._on_change)
         self.typ_cb.currentIndexChanged.connect(self._on_change)
         self.room_cb.currentIndexChanged.connect(self._on_change)
-        # view/date/navigation signals exposed; planner will connect to these
-        # externally. We do not forward them via filtersChanged.
+        self.view_cb.currentIndexChanged.connect(self._on_view_change)
+        self.prev_btn.clicked.connect(self.navPrev.emit)
+        self.next_btn.clicked.connect(self.navNext.emit)
+        self.day_date.dateChanged.connect(self.dayDateChanged.emit)
+        self.week_from.dateChanged.connect(self.weekFromChanged.emit)
 
         self.setWidget(self._widget)
 
@@ -105,61 +109,48 @@ class GlobalFilterDock(QDockWidget):
         )
         self.filtersChanged.emit(fs)
 
-    def rebuild(self, semester_list, lva_list, raum_list, typ_list=None, current: Optional[FilterState] = None) -> None:
-        """Populate dropdowns from provided lists and restore current selection if given.
+    def _on_view_change(self, *_) -> None:
+        self.viewChanged.emit(str(self.view_cb.currentData()))
 
-        Each list is expected to contain objects with `id` and `name` attributes.
-        """
+    def refresh_filter_options(self, semester_list, lva_list, raum_list, typ_list=None, current: Optional[FilterState] = None) -> None:
+        """Populate dropdowns from provided lists and restore current selection if given."""
         cur_sem = current.semester_id if current else None
         cur_lva = current.lva_id if current else None
         cur_room = current.raum_id if current else None
         cur_typ = current.typ if current else None
 
-        # Semester
-        self.sem_cb.blockSignals(True)
-        self.sem_cb.clear()
-        self.sem_cb.addItem("Semester: alle", "")
-        for s in semester_list:
-            self.sem_cb.addItem(f"{s.id} – {s.name}", s.id)
-        if cur_sem:
-            i = self.sem_cb.findData(cur_sem)
-            if i >= 0:
-                self.sem_cb.setCurrentIndex(i)
-        self.sem_cb.blockSignals(False)
+        self._set_combo_items(
+            self.sem_cb,
+            "Semester: alle",
+            "",
+            [(f"{s.id} – {s.name}", s.id) for s in semester_list],
+            cur_sem,
+        )
+        self._set_combo_items(
+            self.lva_cb,
+            "LVA: Alle",
+            None,
+            [(f"{lv.id} – {getattr(lv, 'name', '')}", lv.id) for lv in lva_list],
+            cur_lva,
+        )
+        typ_items = [(tp, tp) for tp in sorted({t for t in typ_list or [] if t})]
+        self._set_combo_items(self.typ_cb, "Typ: Alle", None, typ_items, cur_typ)
+        self._set_combo_items(
+            self.room_cb,
+            "Raum: alle",
+            "",
+            [(f"{r.id} – {getattr(r, 'name', '')}", r.id) for r in raum_list],
+            cur_room,
+        )
 
-        # LVA
-        self.lva_cb.blockSignals(True)
-        self.lva_cb.clear()
-        self.lva_cb.addItem("LVA: Alle", None)
-        for lv in lva_list:
-            self.lva_cb.addItem(f"{lv.id} – {getattr(lv, 'name', '')}", lv.id)
-        if cur_lva:
-            i = self.lva_cb.findData(cur_lva)
+    def _set_combo_items(self, combo, label: str, default_data, items, current) -> None:
+        combo.blockSignals(True)
+        combo.clear()
+        combo.addItem(label, default_data)
+        for text, data in items:
+            combo.addItem(text, data)
+        if current is not None and current != "":
+            i = combo.findData(current)
             if i >= 0:
-                self.lva_cb.setCurrentIndex(i)
-        self.lva_cb.blockSignals(False)
-
-        # Typ
-        self.typ_cb.blockSignals(True)
-        self.typ_cb.clear()
-        self.typ_cb.addItem("Typ: Alle", None)
-        if typ_list:
-            for tp in sorted({t for t in typ_list if t}):
-                self.typ_cb.addItem(tp, tp)
-        if cur_typ is not None:
-            i = self.typ_cb.findData(cur_typ)
-            if i >= 0:
-                self.typ_cb.setCurrentIndex(i)
-        self.typ_cb.blockSignals(False)
-
-        # Räume
-        self.room_cb.blockSignals(True)
-        self.room_cb.clear()
-        self.room_cb.addItem("Raum: alle", "")
-        for r in raum_list:
-            self.room_cb.addItem(f"{r.id} – {getattr(r, 'name', '')}", r.id)
-        if cur_room:
-            i = self.room_cb.findData(cur_room)
-            if i >= 0:
-                self.room_cb.setCurrentIndex(i)
-        self.room_cb.blockSignals(False)
+                combo.setCurrentIndex(i)
+        combo.blockSignals(False)

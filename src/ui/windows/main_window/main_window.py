@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Dict
-
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QWidget
+from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtWidgets import QDialog, QMainWindow, QMessageBox
 
 from src.services.data_service import DataService
 
@@ -11,7 +10,6 @@ from src.ui.docks.data_editor_dock import DataEditorDock
 from src.ui.docks.conflicts_dock import ConflictsDock
 from src.ui.docks.global_filter_dock import GlobalFilterDock
 from src.core.states import FilterState
-from .actions import build_menus, attach_settings_handler
 from ...utils.crud_handlers import CrudHandlers
 from .layout_manager import LayoutManager
 from src.ui.planner.workspace import PlannerWorkspace
@@ -28,8 +26,7 @@ class MainWindow(QMainWindow):
         # self.setCentralWidget(QWidget())
 
         # Menüs + Settings Handler
-        attach_settings_handler(self)  # setzt self.open_settings
-        build_menus(self)
+        self._build_menus()
 
         # initial (shared) filter state owned by MainWindow
         self.filter_state = FilterState()
@@ -48,11 +45,49 @@ class MainWindow(QMainWindow):
         self._wire_signals()
 
         # initial refresh
-        self.refresh_docks()
-        self.planner.refresh(emit=True)
+        self.refresh_everything()
         self.layout_mgr.init_default()
 
     # ---------- Setup
+
+    def open_settings(self) -> None:
+        from ...dialogs import SettingsDialog  # local import to avoid cycles
+
+        cur = self.ds.load_settings()
+        dlg = SettingsDialog(self, cur)
+        if dlg.exec() != QDialog.Accepted or not dlg.result_settings:
+            return
+
+        s = cur
+        s.update(dlg.result_settings)
+        self.ds.save_settings(s)
+
+        QMessageBox.information(self, "Settings", "Gespeichert.")
+        self.refresh_everything()
+
+    def _build_menus(self) -> None:
+        mb = self.menuBar()
+
+        file_menu = mb.addMenu("Datei")
+        self.view_menu = mb.addMenu("Ansicht")
+        tools_menu = mb.addMenu("Tools")
+
+        self.act_settings = QAction("Settings…", self)
+        self.act_settings.triggered.connect(self.open_settings)
+
+        self.act_refresh = QAction("Aktualisieren", self)
+        self.act_refresh.triggered.connect(self.refresh_everything)
+
+        tools_menu.addAction(self.act_settings)
+        file_menu.addAction(self.act_refresh)
+
+        self.layout_menu = self.view_menu.addMenu("Layout")
+
+        self.layout_group = QActionGroup(self)
+        self.layout_group.setExclusive(True)
+
+        self.act_save_layout = QAction("Aktuelles Layout speichern…", self)
+        self.act_reset_layouts = QAction("Layouts zurücksetzen", self)
 
     def _setup_dock_options(self) -> None:
         self.setDockOptions(
@@ -98,6 +133,7 @@ class MainWindow(QMainWindow):
     def _wire_signals(self) -> None:
         # Termine
         self.termine_dock.termin_double_clicked.connect(self.crud.edit_termin_by_id)
+        self.termine_dock.termin_delete_clicked.connect(self.crud.del_termin_by_id)
         
         self.termine_dock.termin_unassign_requested.connect(self._on_unassign_termin)
 
@@ -121,14 +157,11 @@ class MainWindow(QMainWindow):
         # Wire view/navigation/date widgets to planner behavior
         # Planner connects to these widgets internally, but ensure navigation
         # buttons call planner navigation as well.
-        try:
-            self.global_filter_dock.prev_btn.clicked.connect(lambda: self.planner._shift_period(-1))
-            self.global_filter_dock.next_btn.clicked.connect(lambda: self.planner._shift_period(+1))
-            self.global_filter_dock.view_cb.currentIndexChanged.connect(lambda *_: self.planner._on_view_changed())
-            self.global_filter_dock.day_date.dateChanged.connect(lambda *_: self.planner.refresh(emit=False))
-            self.global_filter_dock.week_from.dateChanged.connect(lambda *_: self.planner.refresh(emit=False))
-        except Exception:
-            pass
+        self.global_filter_dock.navPrev.connect(self._on_nav_prev)
+        self.global_filter_dock.navNext.connect(self._on_nav_next)
+        self.global_filter_dock.viewChanged.connect(self._on_view_changed)
+        self.global_filter_dock.dayDateChanged.connect(self._on_day_date_changed)
+        self.global_filter_dock.weekFromChanged.connect(self._on_week_from_changed)
 
     def _on_global_filters_changed(self, fs: FilterState) -> None:
         """Update the shared FilterState and refresh views that depend on it.
@@ -146,29 +179,33 @@ class MainWindow(QMainWindow):
             # planner may not implement the sync method yet; ignore
             pass
 
-        # Recompute terms using global filters and update TermineDock
-        sem = fs.semester_id
-        room = fs.raum_id
-        q = (str(fs.lva_id).strip().lower() if fs.lva_id else "")
-        terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
-        # apply typ filtering centrally as well
-        if fs.typ:
-            terms = [t for t in terms if getattr(t, "typ", None) == fs.typ]
-
-        # let the TermineDock know about global filters (sync its UI) if it supports it
-        try:
-            self.termine_dock.set_global_filter_state(fs)
-        except Exception:
-            pass
+        terms = self._compute_filtered_termine(fs)
 
         self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
 
     # ---------- refresh
     
     def _on_unassign_termin(self, tid: str):
-        if self.planner.actions.unassign_termin(tid):
-            self.refresh_docks()
-            self.planner.refresh()
+        if self.planner.crud.unassign_termin(tid):
+            self.refresh_everything()
+
+    def _on_nav_prev(self) -> None:
+        self.planner._shift_period(-1)
+
+    def _on_nav_next(self) -> None:
+        self.planner._shift_period(+1)
+
+    def _on_view_changed(self, _view: str) -> None:
+        self.planner._on_view_changed()
+
+    def _on_day_date_changed(self, _date) -> None:
+        self.planner.refresh(emit=False)
+
+    def _on_week_from_changed(self, _date) -> None:
+        self.planner.refresh(emit=False)
+
+    def refresh_everything(self) -> None:
+        self.planner.refresh(emit=True)
 
     def refresh_conflicts(self) -> None:
         """Refresh the conflicts dock with current Termine."""
@@ -186,6 +223,31 @@ class MainWindow(QMainWindow):
     def refresh_docks(self) -> None:
         # prefer central filter_state if present, otherwise fall back to planner's local filters
         fs = getattr(self, "filter_state", None)
+        terms = self._compute_filtered_termine(fs)
+
+        # keep global filter dock in sync with available data
+        try:
+            lva_list = getattr(self.planner.state, "lvas", None) or []
+            typ_list = [t.typ for t in getattr(self.planner.state, "termine", []) if getattr(t, "typ", None)]
+            self.global_filter_dock.refresh_filter_options(
+                self.planner.state.semester,
+                lva_list,
+                self.planner.state.raeume,
+                typ_list=typ_list,
+                current=self.filter_state,
+            )
+        except Exception:
+            pass
+
+        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
+
+        # Data editor dock refresh
+        self.data_editor_dock.refresh_all()
+
+        # Refresh conflicts (use all termine, not filtered)
+        self.refresh_conflicts()
+
+    def _compute_filtered_termine(self, fs: FilterState | None):
         if fs:
             sem = fs.semester_id
             room = fs.raum_id
@@ -197,24 +259,5 @@ class MainWindow(QMainWindow):
         terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
         if typ:
             terms = [t for t in terms if getattr(t, "typ", None) == typ]
-
-        # keep global filter dock in sync with available data
-        try:
-            lva_list = getattr(self.planner.state, "lvas", None) or []
-            typ_list = [t.typ for t in getattr(self.planner.state, "termine", []) if getattr(t, "typ", None)]
-            self.global_filter_dock.rebuild(self.planner.state.semester, lva_list, self.planner.state.raeume, typ_list=typ_list, current=self.filter_state)
-        except Exception:
-            pass
-
-        # apply central typ filter if present
-        if fs and getattr(fs, "typ", None):
-            terms = [t for t in terms if getattr(t, "typ", None) == fs.typ]
-
-        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
-
-        # Data editor dock refresh
-        self.data_editor_dock.refresh_all()
-
-        # Refresh conflicts (use all termine, not filtered)
-        self.refresh_conflicts()
+        return terms
 

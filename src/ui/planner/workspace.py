@@ -1,11 +1,12 @@
 from datetime import date, timedelta
+from types import SimpleNamespace
 from typing import Optional, Tuple
 
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor, QBrush, QPalette
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QDateEdit, QLabel,
-    QPushButton, QStackedWidget, QTableWidget, QTableWidgetItem
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+    QStackedWidget, QTableWidget
 )
 
 from ...services.data_service import DataService
@@ -13,13 +14,10 @@ from ..utils.datetime_utils import date_to_qdate
 from .state import PlannerState
 from .day_view import PlannerDayView
 from .week_view import PlannerWeekView
-from .actions import PlannerActions
+from ..utils.crud_handlers import CrudHandlers
 from .cell import TerminCard, TimeSlotCell
 
 from ..components.dragdrop.week_drop_table import WeekDropTable
-
-from ..components.widgets.tight_combobox import TightComboBox
-
 
 class PlannerWorkspace(QWidget):
     def __init__(self, parent: QWidget, ds: DataService, on_data_changed, global_filter_dock=None):
@@ -114,7 +112,11 @@ class PlannerWorkspace(QWidget):
         # ─────────────────────────────────────────────────────────────
         # Helpers
         # ─────────────────────────────────────────────────────────────
-        self.actions = PlannerActions(self.state, self)
+        self.crud = CrudHandlers(
+            ds=self.ds,
+            parent=self,
+            planner=SimpleNamespace(refresh=lambda: None),
+        )
 
         self.day_view = PlannerDayView(
             state=self.state,
@@ -290,11 +292,11 @@ class PlannerWorkspace(QWidget):
         self.refresh(emit=False)
 
     def add_termin(self):
-        if self.actions.add_termin(default_qdate=self.day_date.date()):
+        if self.crud.add_termin(default_qdate=self.day_date.date(), auto_id=True):
             self.reload_and_refresh_everything()  # NEW
 
     def _edit_termin_by_id(self, tid: str):
-        if self.actions.edit_termin_by_id(tid):
+        if self.crud.edit_termin_by_id(tid):
             self.reload_and_refresh_everything()  # NEW
 
     def set_on_data_changed(self, cb):
@@ -431,10 +433,10 @@ class PlannerWorkspace(QWidget):
 
     def _on_week_drop(self, termin_id, new_date, new_start):
         # IMPORTANT: move_termin MUST persist changes.
-        if self.actions.move_termin(termin_id, new_date=new_date, new_start=new_start):
+        if self.crud.move_termin(termin_id, new_date=new_date, new_start=new_start):
             self.reload_and_refresh_everything()  # NEW
 
     def _on_day_drop(self, termin_id, new_date, new_start, new_room_id=None):
         # Handle drops in day view (including room changes)
-        if self.actions.move_termin(termin_id, new_date=new_date, new_start=new_start, new_room_id=new_room_id):
+        if self.crud.move_termin(termin_id, new_date=new_date, new_start=new_start, new_room_id=new_room_id):
             self.reload_and_refresh_everything()

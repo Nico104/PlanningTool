@@ -1,64 +1,20 @@
-from typing import List, Dict, Optional
+from typing import List, Dict
 
-from PySide6.QtCore import Qt, Signal,QDate
-from PySide6.QtGui import QDropEvent
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
-    QScrollArea, QComboBox, QLabel, QMenu, QPushButton, QFrame
+    QScrollArea, QMenu, QFrame
 )
 
 from ..utils.datetime_utils import fmt_date, fmt_time
 from ...core.models import Termin, Lehrveranstaltung, Raum
 from ..components.cards.termin_card import TerminCard
-
-
-from ..components.widgets.tight_combobox import TightComboBox
-from ..planner.actions import PlannerActions
-
-
-class _TerminDropContainer(QWidget):
-    """
-    Drop target for Termine list.
-    Drop anywhere inside this container -> emit termin_id (unassign request).
-    """
-    terminDroppedToList = Signal(str)
-    MIME = "application/termin-id"
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAcceptDrops(True)
-
-    def dragEnterEvent(self, e):
-        if e.mimeData().hasFormat(self.MIME):
-            e.acceptProposedAction()
-        else:
-            e.ignore()
-
-    def dragMoveEvent(self, e):
-        if e.mimeData().hasFormat(self.MIME):
-            e.acceptProposedAction()
-        else:
-            e.ignore()
-
-    def dropEvent(self, e: QDropEvent):
-        md = e.mimeData()
-        if not md.hasFormat(self.MIME):
-            e.ignore()
-            return
-
-        tid = bytes(md.data(self.MIME)).decode("utf-8").strip()
-        if tid:
-            self.terminDroppedToList.emit(tid)
-            e.acceptProposedAction()
-        else:
-            e.ignore()
+from ..components.dragdrop.termin_drop_area import TerminDropArea
 
 
 class TermineDock(QDockWidget):
     termin_double_clicked = Signal(str)
     termin_delete_clicked = Signal(str)
-
-    # NEW: when dropped back into list (unassign)
     termin_unassign_requested = Signal(str)
 
     def __init__(self, parent=None):
@@ -75,20 +31,19 @@ class TermineDock(QDockWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(6)
 
-        # ---- Header bar ----
+        #Header bar
         bar = QHBoxLayout()
         bar.setSpacing(8)
         root.addLayout(bar)
 
-        # ---- Scroll area with cards ----
+        #Scroll area with cards
         self.scroll = QScrollArea(self)
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
         self.scroll.setLineWidth(0)
 
 
-        # IMPORTANT: droppable container (drop anywhere to unassign)
-        self.container = _TerminDropContainer()
+        self.container = TerminDropArea()
         self.container.terminDroppedToList.connect(self._on_drop_to_list)
 
         self.list_layout = QVBoxLayout(self.container)
@@ -114,25 +69,10 @@ class TermineDock(QDockWidget):
 
         # Global filtering is applied by MainWindow before calling set_rows.
         # Just render the provided rows.
-        self._render()
-
-    def set_global_filter_state(self, fs) -> None:
-        """Sync the dock's filter UI from a central FilterState (read-only).
-
-        This updates local comboboxes to reflect global selections but does not
-        emit signals back to the application (blockSignals used).
-        """
-        # TermineDock no longer shows local filter widgets; MainWindow applies
-        # global filters and passes the filtered rows to set_rows().
-        return
-
-    # ---------- filters ----------
-    def _rebuild_filters(self) -> None:
-        # No local filters to rebuild; global dock owns filter widgets.
-        return
+        self._build_cards()
 
     # ---------- rendering ----------
-    def _render(self) -> None:
+    def _build_cards(self) -> None:
         # clear old cards (leave last stretch)
         while self.list_layout.count() > 1:
             item = self.list_layout.takeAt(0)
