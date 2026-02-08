@@ -44,11 +44,11 @@ class ConflictDetector:
     """Detects scheduling conflicts and warnings."""
     
     def __init__(self, 
-                 lva_map: Dict[str, Lehrveranstaltung],
-                 raum_map: Dict[str, Raum],
+                 lvas: List[Lehrveranstaltung],
+                 raeume: List[Raum],
                  semester_list: List[Semester]):
-        self.lva_map = lva_map
-        self.raum_map = raum_map
+        self.lvas = lvas
+        self.raeume = raeume
         self.semester_list = semester_list
     
     def is_assigned(self, termin: Termin) -> bool:
@@ -145,18 +145,16 @@ class ConflictDetector:
                 problems.append("kein Raum")
             
             if problems:
-                lva = self.lva_map.get(t.lva_id)
-                raum = self.raum_map.get(t.raum_id)
-                
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
                 msg = f"Unvollständiger Termin: {', '.join(problems)}"
-                
                 warnings.append(ConflictIssue(
                     severity="warning",
                     category="incomplete",
                     termin_ids=[t.id],
                     message=msg,
                     datum=t.datum if t.datum and t.datum != UNASSIGNED_DATE else None,
-                   zeit_von=t.start_zeit,
+                    zeit_von=t.start_zeit,
                     zeit_bis=t.get_end_time(),
                     raum=raum.name if raum else "",
                     lva=lva.name if lva else t.lva_id,
@@ -220,20 +218,21 @@ class ConflictDetector:
         conflicts = []
         
         # Group by lecturer and date
-        by_lecturer_date: Dict[Tuple[str, date], List[Termin]] = {}
+        by_lecturer_date = []
         for t in termine:
             if not t.datum:
                 continue
-            lva = self.lva_map.get(t.lva_id)
+            lva = next((l for l in self.lvas if l.id == t.lva_id), None)
             if not lva or not lva.vortragende:
                 continue
-            
-            lecturer_key = lva.vortragende.email  # Use email as unique identifier
-            key = (lecturer_key, t.datum)
-            by_lecturer_date.setdefault(key, []).append(t)
-        
-        # Check for overlaps within each group
-        for (lecturer_email, datum), terms in by_lecturer_date.items():
+            lecturer_key = lva.vortragende.email
+            found = next((bl for bl in by_lecturer_date if bl[0] == lecturer_key and bl[1] == t.datum), None)
+            if found:
+                found[2].append(t)
+            else:
+                by_lecturer_date.append([lecturer_key, t.datum, [t]])
+        for bl in by_lecturer_date:
+            lecturer_email, datum, terms = bl
             for i, t1 in enumerate(terms):
                 for t2 in terms[i+1:]:
                     if self.times_overlap(t1, t2):
@@ -241,7 +240,6 @@ class ConflictDetector:
                             conflicts.append(self._create_conflict(
                                 "lecturer", t1, t2, "Vortragenden-Konflikt"
                             ))
-        
         return conflicts
     
     def detect_outside_period_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
@@ -258,11 +256,9 @@ class ConflictDetector:
             
             start, end = period
             if t.datum < start or t.datum > end:
-                lva = self.lva_map.get(t.lva_id)
-                raum = self.raum_map.get(t.raum_id)
-                
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
                 msg = f"Datum außerhalb des Planungszeitraums ({start.strftime('%d.%m.%Y')} - {end.strftime('%d.%m.%Y')})"
-                
                 warnings.append(ConflictIssue(
                     severity="warning",
                     category="time_period",
@@ -280,24 +276,24 @@ class ConflictDetector:
     
     def _create_conflict(self, category: str, t1: Termin, t2: Termin, msg_prefix: str) -> ConflictIssue:
         """Create a conflict issue for two overlapping Termine."""
-        lva1 = self.lva_map.get(t1.lva_id)
-        lva2 = self.lva_map.get(t2.lva_id)
-        raum1 = self.raum_map.get(t1.raum_id)
-        raum2 = self.raum_map.get(t2.raum_id)
-        
+        lva1 = next((l for l in self.lvas if l.id == t1.lva_id), None)
+        lva2 = next((l for l in self.lvas if l.id == t2.lva_id), None)
+        raum1 = next((r for r in self.raeume if r.id == t1.raum_id), None)
+        raum2 = next((r for r in self.raeume if r.id == t2.raum_id), None)
+
         lva1_name = lva1.name if lva1 else t1.lva_id
         lva2_name = lva2.name if lva2 else t2.lva_id
         raum1_name = raum1.name if raum1 else ""
         raum2_name = raum2.name if raum2 else ""
-        
+
         # Use earlier time as reference
         zeit_von = min(t1.start_zeit, t2.start_zeit) if t1.start_zeit and t2.start_zeit else None
         end1 = t1.get_end_time()
         end2 = t2.get_end_time()
         zeit_bis = max(end1, end2) if end1 and end2 else None
-        
+
         msg = f"{msg_prefix}: {lva1_name} ({raum1_name}) ↔ {lva2_name} ({raum2_name})"
-        
+
         return ConflictIssue(
             severity="conflict",
             category=category,

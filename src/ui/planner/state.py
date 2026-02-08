@@ -19,10 +19,6 @@ class PlannerState:
     settings: Dict = field(default_factory=dict)
 
     ts: Optional[TerminService] = None
-    lva_map: Dict[str, Lehrveranstaltung] = field(default_factory=dict)
-    raum_map: Dict[str, Raum] = field(default_factory=dict)
-
-    termin_map: Dict[str, "Termin"] = field(default_factory=dict)
 
     def reload(self) -> None:
         self.semester = self.ds.load_semester()
@@ -31,16 +27,13 @@ class PlannerState:
         self.termine = self.ds.load_termine()
         self.settings = self.ds.load_settings()
         self.ts = TerminService(self.settings)
-        self.lva_map = {l.id: l for l in self.lvas}
-        self.raum_map = {r.id: r for r in self.raeume}
-        self.termin_map = {t.id: t for t in self.termine}
 
     def filtered_termine(self, semester_id: Optional[str], raum_id: Optional[str], q: str) -> List[Termin]:
         out = filter_termine(self.termine, semester_id=semester_id, raum_id=raum_id)
         q = (q or "").strip().lower()
         if q:
             def match(t: Termin) -> bool:
-                lva = self.lva_map.get(t.lva_id)
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
                 hay = " ".join([
                     t.lva_id,
                     lva.name if lva else "",

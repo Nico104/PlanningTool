@@ -140,11 +140,11 @@ class ConflictsDock(QDockWidget):
         self.setWidget(main_widget)
     
     def initialize_detector(self, 
-                          lva_map: Dict[str, Lehrveranstaltung],
-                          raum_map: Dict[str, Raum],
+                          lvas: List[Lehrveranstaltung],
+                          raeume: List[Raum],
                           semester_list: List[Semester]) -> None:
         """Initialize the conflict detector with current data."""
-        self._detector = ConflictDetector(lva_map, raum_map, semester_list)
+        self._detector = ConflictDetector(lvas, raeume, semester_list)
     
     def refresh_conflicts(self, termine: List[Termin]) -> None:
         """Detect and display conflicts for the given Termine."""

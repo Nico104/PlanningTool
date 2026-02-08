@@ -1,5 +1,5 @@
 from datetime import date, time, timedelta, datetime
-from typing import Dict, List, Callable
+from typing import List, Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QBrush
@@ -15,12 +15,12 @@ from .cell import TimeSlotCell, TerminCard
 def _mins(t: time) -> int:
     return t.hour * 60 + t.minute
 
-TYPE_COLORS: Dict[str, QColor] = {
-    "VO": QColor("#E3F2FD"),  # light blue
-    "UE": QColor("#E8F5E9"),  # light green
-    "LU": QColor("#FFF3E0"),  # light orange
-    "SE": QColor("#F3E5F5"),  # light purple
-}
+TYPE_COLORS = [
+    ("VO", QColor("#E3F2FD")),  # light blue
+    ("UE", QColor("#E8F5E9")),  # light green
+    ("LU", QColor("#FFF3E0")),  # light orange
+    ("SE", QColor("#F3E5F5")),  # light purple
+]
 DEFAULT_BG = QColor("#F7F7F7")
 DEFAULT_FG = QColor("#111111")
 
@@ -50,23 +50,25 @@ class PlannerWeekView:
         if hasattr(self.week_table, "set_duration_preview_provider"):
             slot_min = int(self.state.settings.get("time_slot_minutes", 30))
             def _dur_provider(tid: str) -> int:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 return int(t.duration) if t else 0
             self.week_table.set_duration_preview_provider(_dur_provider, slot_min)
         if hasattr(self.week_table, "set_color_provider"):
             def _color_provider(tid: str) -> QColor:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 if t:
                     typ = (t.typ or "").strip().upper()
-                    return TYPE_COLORS.get(typ, DEFAULT_BG)
+                    for k, color in TYPE_COLORS:
+                        if typ == k:
+                            return color
                 return DEFAULT_BG
             self.week_table.set_color_provider(_color_provider)
         if hasattr(self.week_table, "set_text_provider"):
             def _text_provider(tid: str) -> str:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 if not t or not t.start_zeit or not t.get_end_time():
                     return ""
-                lva = self.state.lva_map.get(t.lva_id)
+                lva = next((l for l in self.state.lvas if l.id == t.lva_id), None)
                 lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
                 room_s = f"{t.raum_id}"
                 gname = (t.gruppe.name if t.gruppe else "")
@@ -76,7 +78,6 @@ class PlannerWeekView:
             self.week_table.set_text_provider(_text_provider)
 
         self._setup_table()
-        self.week_table.cellDoubleClicked.connect(self._on_double_click)
         self.week_table.cellClicked.connect(self._on_cell_clicked)
 
     def _day_bounds(self) -> tuple[time, time, int]:
@@ -106,13 +107,8 @@ class PlannerWeekView:
 
         t.setSizeAdjustPolicy(QTableWidget.AdjustToContentsOnFirstShow)
 
-        # NOTE: Don't override selection mode - WeekDropTable needs it for drag & drop
-        # t.setSelectionMode(QTableWidget.NoSelection)
-        # t.setFocusPolicy(Qt.NoFocus)
-
         h = t.horizontalHeader()
         v = t.verticalHeader()
-
         h.setStretchLastSection(False)
         v.setSectionResizeMode(QHeaderView.Fixed)
         
@@ -142,7 +138,7 @@ class PlannerWeekView:
         slots = self._time_slots()
         slot_min = self._day_bounds()[2]
 
-        # ✅ Clear all cell widgets before rebuilding
+        # Clear all cell widgets before rebuilding
         for row in range(self.week_table.rowCount()):
             for col in range(self.week_table.columnCount()):
                 widget = self.week_table.cellWidget(row, col)
@@ -150,11 +146,13 @@ class PlannerWeekView:
                     self.week_table.removeCellWidget(row, col)
                     widget.deleteLater()
 
+        self.week_table.clearSpans()
+
         self.week_table.setRowCount(len(slots))
         self.week_table.setColumnCount(1 + len(days))
         self.week_table.setHorizontalHeaderLabels(["Zeit"] + days)
 
-        # header sizing: time column compact, days stretch
+        #time column compact, days stretch
         h = self.week_table.horizontalHeader()
         h.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         for c in range(1, 1 + len(days)):
@@ -166,36 +164,40 @@ class PlannerWeekView:
             it.setFlags(it.flags() & ~Qt.ItemIsEditable)
             it.setTextAlignment(Qt.AlignRight | Qt.AlignTop)
             self.week_table.setItem(r, 0, it)
-
-        # ✅ clear spans properly (no warnings)
-        self.week_table.clearSpans()
+        
 
         # render existing Termine into grid as blocks
-        by_day: Dict[date, List[Termin]] = {}
+        by_day = []
         for t in terms:
-            by_day.setdefault(t.datum, []).append(t)
-        for d in by_day:
-            by_day[d].sort(key=lambda x: x.start_zeit)
+            found = next((bd for bd in by_day if bd[0] == t.datum), None)
+            if found:
+                found[1].append(t)
+            else:
+                by_day.append([t.datum, [t]])
+        for bd in by_day:
+            bd[1].sort(key=lambda x: x.start_zeit)
 
         for col in range(6):
             d0 = week_mo + timedelta(days=col)
-            items = by_day.get(d0, [])
+            found = next((bd for bd in by_day if bd[0] == d0), None)
+            items = found[1] if found else []
 
             if not items:
                 continue
 
-            # Group overlapping/concurrent appointments
+            # Group overlapping
             appointment_groups = self._group_concurrent_appointments(items, slots)
 
-            # Build a mapping of group_id -> list of appointments
-            groups_by_id: Dict[int, List[Termin]] = {}
+            groups_by_id = []
             for termin, group_id in appointment_groups:
-                if group_id not in groups_by_id:
-                    groups_by_id[group_id] = []
-                groups_by_id[group_id].append(termin)
+                found = next((g for g in groups_by_id if g[0] == group_id), None)
+                if found:
+                    found[1].append(termin)
+                else:
+                    groups_by_id.append([group_id, [termin]])
 
-            # Process each group in a single spanned cell; offset cards by start time
-            for group_id, group_appointments in groups_by_id.items():
+            for group in groups_by_id:
+                group_id, group_appointments = group
                 valid_apps = [
                     app for app in group_appointments
                     if isinstance(app.start_zeit, time)
@@ -246,7 +248,11 @@ class PlannerWeekView:
 
                     app_text = self._format_termin_text(app)
                     typ = (app.typ or "").strip().upper()
-                    bg = TYPE_COLORS.get(typ, DEFAULT_BG)
+                    bg = DEFAULT_BG
+                    for k, color in TYPE_COLORS:
+                        if typ == k:
+                            bg = color
+                            break
                     card = TerminCard(app.id, app_text, bg, self.week_table)
                     card.doubleClicked.connect(self.edit_by_id_cb)
 
@@ -260,24 +266,6 @@ class PlannerWeekView:
                     cell_widget.add_termin_card(card, top_offset_px=top_offset_px)
 
 
-    def _on_double_click(self, row: int, col: int):
-        if col <= 0:
-            return
-        # Get the cell widget instead of item
-        cell_widget = self.week_table.cellWidget(row, col)
-        if isinstance(cell_widget, TimeSlotCell):
-            # If there are termin cards, edit the first one
-            termin_ids = cell_widget.get_termin_ids()
-            if termin_ids:
-                self.edit_by_id_cb(termin_ids[0])
-        else:
-            # Fallback for items
-            it = self.week_table.item(row, col)
-            if not it:
-                return
-            tid = it.data(Qt.UserRole)
-            if tid:
-                self.edit_by_id_cb(str(tid))
 
     def _on_cell_clicked(self, row: int, col: int) -> None:
         # Clear focus when clicking empty calendar cells
@@ -299,8 +287,7 @@ class PlannerWeekView:
         """
         if not items:
             return []
-
-        # Sweep-line grouping to include transitive overlaps
+        
         sorted_items = sorted(
             items,
             key=lambda x: _mins(x.start_zeit) if x.start_zeit else 0
@@ -340,9 +327,8 @@ class PlannerWeekView:
         return groups
 
     def _format_termin_text(self, t: Termin) -> str:
-        """Format appointment text for display."""
         end_raw = t.get_end_time()
-        lva = self.state.lva_map.get(t.lva_id)
+        lva = next((l for l in self.state.lvas if l.id == t.lva_id), None)
         lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
         room_s = f"{t.raum_id}"
         gname = (t.gruppe.name if t.gruppe else "")

@@ -28,11 +28,11 @@ def print_termine(termine: List[Termin], lva_map: Dict[str, Lehrveranstaltung], 
         print("(keine Termine gefunden)")
         return
     for t in termine:
-        lva = lva_map.get(t.lva_id)
-        raum = raum_map.get(t.raum_id)
+        lva = next((l for l in lva_map if l.id == t.lva_id), None)
+        raum = next((r for r in raum_map if r.id == t.raum_id), None)
         lva_name = lva.name if lva else t.lva_id
         raum_name = raum.name if raum else t.raum_id
-        grp = "" if (t.gruppe.name in ("", "-", None)) else f" | Gruppe {t.gruppe.name} ({t.gruppe.groesse})"
+        grp = "" if (t.gruppe and t.gruppe.name in ("", "-", None)) else f" | Gruppe {t.gruppe.name} ({t.gruppe.groesse})" if t.gruppe else ""
         ap = " | AP" if t.anwesenheitspflicht else ""
         note = f" | {t.notiz}" if t.notiz else ""
         end_time = t.get_end_time() or t.start_zeit

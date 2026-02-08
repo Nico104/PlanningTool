@@ -1,5 +1,5 @@
 from datetime import date, time, datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QBrush
@@ -12,12 +12,12 @@ from .cell import TimeSlotCell, TerminCard
 
 
 # --- Option A: simple color mapping by type (background + foreground) ---
-TYPE_COLORS: Dict[str, QColor] = {
-    "VO": QColor("#E3F2FD"),  # light blue
-    "UE": QColor("#E8F5E9"),  # light green
-    "LU": QColor("#FFF3E0"),  # light orange
-    "SE": QColor("#F3E5F5"),  # light purple
-}
+TYPE_COLORS = [
+    ("VO", QColor("#E3F2FD")),  # light blue
+    ("UE", QColor("#E8F5E9")),  # light green
+    ("LU", QColor("#FFF3E0")),  # light orange
+    ("SE", QColor("#F3E5F5")),  # light purple
+]
 DEFAULT_BG = QColor("#F7F7F7")
 DEFAULT_FG = QColor("#111111")
 
@@ -62,24 +62,26 @@ class PlannerDayView:
             self.day_table.terminDropped.connect(self._on_termin_dropped)
         if hasattr(self.day_table, "set_duration_preview_provider"):
             def _dur_provider(tid: str) -> int:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 return int(t.duration) if t else 0
             slot_min = int(self.state.settings.get("time_slot_minutes", 30))
             self.day_table.set_duration_preview_provider(_dur_provider, slot_min)
         if hasattr(self.day_table, "set_color_provider"):
             def _color_provider(tid: str) -> QColor:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 if t:
                     typ = (t.typ or "").strip().upper()
-                    return TYPE_COLORS.get(typ, DEFAULT_BG)
+                    for k, color in TYPE_COLORS:
+                        if typ == k:
+                            return color
                 return DEFAULT_BG
             self.day_table.set_color_provider(_color_provider)
         if hasattr(self.day_table, "set_text_provider"):
             def _text_provider(tid: str) -> str:
-                t = self.state.termin_map.get(tid)
+                t = next((tt for tt in self.state.termine if tt.id == tid), None)
                 if not t or not t.start_zeit or not t.get_end_time():
                     return ""
-                lva = self.state.lva_map.get(t.lva_id)
+                lva = next((l for l in self.state.lvas if l.id == t.lva_id), None)
                 lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
                 room_s = f"{t.raum_id}"
                 gname = (t.gruppe.name if t.gruppe else "")
@@ -105,13 +107,7 @@ class PlannerDayView:
 
         # NOTE: Don't override selection mode - WeekDropTable needs it for drag & drop
         # t.setSelectionMode(QTableWidget.NoSelection)
-        # t.setFocusPolicy(Qt.NoFocus)
-
-        h = t.horizontalHeader()
-        v = t.verticalHeader()
-
-        h.setStretchLastSection(False)
-        v.setSectionResizeMode(QHeaderView.Fixed)
+        # ...existing code...
         
         self.day_table.verticalHeader().setDefaultSectionSize(26)
 
@@ -190,15 +186,20 @@ class PlannerDayView:
         # Store room list for drop handler
         self._room_list = rooms
 
-        by_room: Dict[str, List[Termin]] = {}
+        by_room = []
         for t in terms:
             if t.raum_id not in room_index:
                 continue
-            by_room.setdefault(t.raum_id, []).append(t)
-        for rid in by_room:
-            by_room[rid].sort(key=lambda x: x.start_zeit if x.start_zeit else time(0, 0))
+            found = next((br for br in by_room if br[0] == t.raum_id), None)
+            if found:
+                found[1].append(t)
+            else:
+                by_room.append([t.raum_id, [t]])
+        for br in by_room:
+            br[1].sort(key=lambda x: x.start_zeit if x.start_zeit else time(0, 0))
 
-        for room_id, items in by_room.items():
+        for br in by_room:
+            room_id, items = br
             if not items:
                 continue
 
@@ -208,14 +209,17 @@ class PlannerDayView:
             appointment_groups = self._group_concurrent_appointments(items, slots)
 
             # Build a mapping of group_id -> list of appointments
-            groups_by_id: Dict[int, List[Termin]] = {}
+            groups_by_id = []
             for termin, group_id in appointment_groups:
-                if group_id not in groups_by_id:
-                    groups_by_id[group_id] = []
-                groups_by_id[group_id].append(termin)
+                found = next((g for g in groups_by_id if g[0] == group_id), None)
+                if found:
+                    found[1].append(termin)
+                else:
+                    groups_by_id.append([group_id, [termin]])
 
             # Process each group in a single spanned cell; offset cards by start time
-            for group_id, group_appointments in groups_by_id.items():
+            for group in groups_by_id:
+                group_id, group_appointments = group
                 valid_apps = [
                     app for app in group_appointments
                     if isinstance(app.start_zeit, time)
@@ -267,7 +271,7 @@ class PlannerDayView:
 
                     app_text = self._format_termin_text(app)
                     typ = (app.typ or "").strip().upper()
-                    bg = TYPE_COLORS.get(typ, DEFAULT_BG)
+                    bg = next((color for k, color in TYPE_COLORS if k == typ), DEFAULT_BG)
                     card = TerminCard(app.id, app_text, bg, self.day_table)
                     card.doubleClicked.connect(self.edit_by_id_cb)
 
@@ -380,7 +384,8 @@ class PlannerDayView:
     def _format_termin_text(self, t: Termin) -> str:
         """Format appointment text for display."""
         end_raw = t.get_end_time()
-        lva = self.state.lva_map.get(t.lva_id)
+        # Find lva by id using list iteration (use self.state.lvas for consistency)
+        lva = next((l for l in self.state.lvas if l.id == t.lva_id), None)
         lva_short = f"{t.lva_id}" + ("" if not lva else f" {lva.name}")
         room_s = f"{t.raum_id}"
         gname = (t.gruppe.name if t.gruppe else "")

@@ -22,8 +22,8 @@ class TermineDock(QDockWidget):
         self.setAllowedAreas(Qt.AllDockWidgetAreas)
 
         self._all_termine: List[Termin] = []
-        self._lva_map: Dict[str, Lehrveranstaltung] = {}
-        self._raum_map: Dict[str, Raum] = {}
+        self._lvas: List[Lehrveranstaltung] = []
+        self._raeume: List[Raum] = []
 
         header = QWidget(self)
         header.setObjectName("HeaderBar")
@@ -60,12 +60,12 @@ class TermineDock(QDockWidget):
     def set_rows(
         self,
         termine: List[Termin],
-        lva_map: Dict[str, Lehrveranstaltung],
-        raum_map: Dict[str, Raum],
+        lvas: List[Lehrveranstaltung],
+        raeume: List[Raum],
     ) -> None:
         self._all_termine = list(termine)
-        self._lva_map = dict(lva_map)
-        self._raum_map = dict(raum_map)
+        self._lvas = list(lvas)
+        self._raeume = list(raeume)
 
         # Global filtering is applied by MainWindow before calling set_rows
         self._build_cards()
@@ -90,8 +90,8 @@ class TermineDock(QDockWidget):
         terms = sorted(terms, key=_sort_key)
 
         for t in terms:
-            lva = self._lva_map.get(t.lva_id)
-            raum = self._raum_map.get(t.raum_id)
+            lva = next((l for l in self._lvas if l.id == t.lva_id), None)
+            raum = next((r for r in self._raeume if r.id == t.raum_id), None)
 
             title = f"{t.lva_id} – {(lva.name if lva else '')}".strip(" –")
             raum_txt = f"{t.raum_id} – {(raum.name if raum else '')}".strip(" –")

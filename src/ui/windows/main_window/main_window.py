@@ -181,7 +181,7 @@ class MainWindow(QMainWindow):
 
         terms = self._compute_filtered_termine(fs)
 
-        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
+        self.termine_dock.set_rows(terms, self.planner.state.lvas, self.planner.state.raeume)
 
     # ---------- refresh
     
@@ -211,8 +211,8 @@ class MainWindow(QMainWindow):
         """Refresh the conflicts dock with current Termine."""
         # Initialize detector if not already done
         self.conflicts_dock.initialize_detector(
-            self.planner.state.lva_map,
-            self.planner.state.raum_map,
+            self.planner.state.lvas,
+            self.planner.state.raeume,
             self.planner.state.semester
         )
         
@@ -239,7 +239,7 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
-        self.termine_dock.set_rows(terms, self.planner.state.lva_map, self.planner.state.raum_map)
+        self.termine_dock.set_rows(terms, self.planner.state.lvas, self.planner.state.raeume)
 
         # Data editor dock refresh
         self.data_editor_dock.refresh_all()
