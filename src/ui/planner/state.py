@@ -6,6 +6,7 @@ from ...services.data_service import DataService
 from ...services.filter_service import filter_termine
 from ...services.termin_service import TerminService
 
+#Manages data and filtering for the planner UI
 
 @dataclass
 class PlannerState:

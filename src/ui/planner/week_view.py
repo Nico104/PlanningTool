@@ -15,8 +15,6 @@ from .cell import TimeSlotCell, TerminCard
 def _mins(t: time) -> int:
     return t.hour * 60 + t.minute
 
-
-# --- Option A: simple color mapping by type (background + foreground) ---
 TYPE_COLORS: Dict[str, QColor] = {
     "VO": QColor("#E3F2FD"),  # light blue
     "UE": QColor("#E8F5E9"),  # light green
@@ -29,9 +27,8 @@ DEFAULT_FG = QColor("#111111")
 
 class PlannerWeekView:
     """
-    Shows a week grid (Mo–Sa) with time slots as rows.
-    Supports dropping a Termin (by id) onto a cell -> calls on_drop_cb(id, target_date, target_time).
-    Renders Termine as blocks spanning multiple rows based on duration (GRID_MIN).
+    Shows a week grid (Mo-Sa) with time slots as rows
+    Supports dropping a Termin onto a cell
     """
 
     def __init__(
@@ -48,7 +45,6 @@ class PlannerWeekView:
         self.edit_by_id_cb = edit_by_id_cb
         self.on_drop_cb = on_drop_cb
 
-        # if using WeekDropTable, it has terminDropped(str,int,int)
         if hasattr(self.week_table, "terminDropped"):
             self.week_table.terminDropped.connect(self._on_termin_dropped)
         if hasattr(self.week_table, "set_duration_preview_provider"):
