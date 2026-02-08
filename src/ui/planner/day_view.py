@@ -6,32 +6,18 @@ from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel, QComboBox, QDateEdit, QHeaderView, QSizePolicy
 
 from ...core.models import Raum, Termin
-from ..utils.datetime_utils import qdate_to_date, fmt_time, fmt_date, date_to_qdate
+from ..utils.datetime_utils import qdate_to_date, fmt_time, fmt_date, date_to_qdate, mins_from_time
+from ..utils.color_constants import TYPE_COLORS, DEFAULT_BG, DEFAULT_FG
 from .state import PlannerState
 from .cell import TimeSlotCell, TerminCard
 
 
-# --- Option A: simple color mapping by type (background + foreground) ---
-TYPE_COLORS = [
-    ("VO", QColor("#E3F2FD")),  # light blue
-    ("UE", QColor("#E8F5E9")),  # light green
-    ("LU", QColor("#FFF3E0")),  # light orange
-    ("SE", QColor("#F3E5F5")),  # light purple
-]
-DEFAULT_BG = QColor("#F7F7F7")
-DEFAULT_FG = QColor("#111111")
-
-
-def _mins(t: time) -> int:
-    """Convert time to minutes since midnight."""
-    return t.hour * 60 + t.minute
 
 
 class PlannerDayView:
     """
     Shows a day grid with time slots as rows and rooms as columns.
-    Supports dropping a Termin (by id) onto a cell and sharing timeslots
-    when appointments overlap (like week_view).
+    Supports drag & drop and overlapping appointments.
     """
 
     def __init__(
@@ -39,25 +25,18 @@ class PlannerDayView:
         state: PlannerState,
         day_table: QTableWidget,
         day_date: QDateEdit,
-        friday_lbl: QLabel,
-        conflict_lbl: QLabel,
         edit_by_id_cb: Callable[[str], None],
         on_drop_cb: Callable[[str, date, time, Optional[str]], None],
-        current_filters_cb,
     ):
         self.state = state
         self.day_table = day_table
         self.day_date = day_date
-        self.friday_lbl = friday_lbl
-        self.conflict_lbl = conflict_lbl
         self.edit_by_id_cb = edit_by_id_cb
         self.on_drop_cb = on_drop_cb
-        self.current_filters_cb = current_filters_cb
         
         # Track room mapping for drag and drop
         self._room_list: List[Raum] = []
 
-        # if using WeekDropTable, it has terminDropped(str,int,int)
         if hasattr(self.day_table, "terminDropped"):
             self.day_table.terminDropped.connect(self._on_termin_dropped)
         if hasattr(self.day_table, "set_duration_preview_provider"):
@@ -90,10 +69,12 @@ class PlannerDayView:
                 return f"{fmt_time(t.start_zeit)}–{fmt_time(t.get_end_time())} {t.typ} | {room_s} | {lva_short}{grp}{ap}"
             self.day_table.set_text_provider(_text_provider)
 
+        # Table setup and signal connections
         self._setup_table()
         self.day_table.cellDoubleClicked.connect(self._on_double_click)
         self.day_table.cellClicked.connect(self._on_cell_clicked)
 
+    # Configure table appearance and sizing
     def _setup_table(self) -> None:
         t = self.day_table
         t.setWordWrap(True)
@@ -104,13 +85,9 @@ class PlannerDayView:
         t.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         t.setSizeAdjustPolicy(QTableWidget.AdjustToContentsOnFirstShow)
-
-        # NOTE: Don't override selection mode - WeekDropTable needs it for drag & drop
-        # t.setSelectionMode(QTableWidget.NoSelection)
-        # ...existing code...
-        
         self.day_table.verticalHeader().setDefaultSectionSize(26)
 
+    # Get day bounds and slot size from settings
     def _day_bounds(self) -> Tuple[time, time, int]:
         s = self.state.settings
         day_start = datetime.strptime(s.get("day_start", "08:00"), "%H:%M").time()
@@ -118,8 +95,8 @@ class PlannerDayView:
         slot = int(s.get("time_slot_minutes", 30))
         return day_start, day_end, slot
 
+    # Generate list of time slots based on settings
     def _time_slots(self) -> List[time]:
-        """Generate list of time slots based on settings."""
         day_start, day_end, slot_min = self._day_bounds()
         slots: List[time] = []
         start = day_start.hour * 60 + day_start.minute
@@ -128,26 +105,20 @@ class PlannerDayView:
             slots.append(time(hour=m // 60, minute=m % 60))
         return slots
 
-    def refresh(self, filtered_termine: List[Termin]) -> None:
+    # Refresh table for current day and filters
+    def refresh(self, filtered_termine: List[Termin], rooms: List[Raum], sem: str = None, room_filter: str = None) -> None:
         assert self.state.ts is not None
 
         d = qdate_to_date(self.day_date.date())
-        sem, room_filter, _q, _typ = self.current_filters_cb()
-        self.friday_lbl.setText("⭐ Freitag" if d.weekday() == 4 else "")
-
-        rooms = self.state.raeume
-        if room_filter:
-            rooms = [r for r in rooms if r.id == room_filter]
-
         terms_day = [t for t in filtered_termine if t.datum == d]
         self._build_day_grid(rooms, terms_day, d, sem, room_filter)
 
+    # Build the day grid: rows=time slots, columns=rooms
     def _build_day_grid(self, rooms: List[Raum], terms: List[Termin], d: date, sem: Optional[str], room_filter: Optional[str]) -> None:
         assert self.state.ts is not None
 
         slots = self._time_slots()
 
-        # ✅ Clear all cell widgets before rebuilding
         for row in range(self.day_table.rowCount()):
             for col in range(self.day_table.columnCount()):
                 widget = self.day_table.cellWidget(row, col)
@@ -173,14 +144,11 @@ class PlannerDayView:
             it.setTextAlignment(Qt.AlignRight | Qt.AlignTop)
             self.day_table.setItem(r, 0, it)
 
-        # ✅ clear spans properly (no warnings)
         self.day_table.clearSpans()
 
-        # store current day on table (handy in other places)
         if hasattr(self.day_table, "current_day_qdate"):
             self.day_table.current_day_qdate = date_to_qdate(d)
 
-        # render existing Termine into grid as blocks
         room_index = {r.id: idx for idx, r in enumerate(rooms)}
         
         # Store room list for drop handler
@@ -228,8 +196,8 @@ class PlannerDayView:
                 if not valid_apps:
                     continue
 
-                group_start_min = min(_mins(app.start_zeit) for app in valid_apps)
-                group_end_min = max(_mins(app.get_end_time()) for app in valid_apps)
+                group_start_min = min(mins_from_time(app.start_zeit) for app in valid_apps)
+                group_end_min = max(mins_from_time(app.get_end_time()) for app in valid_apps)
 
                 if group_end_min <= group_start_min:
                     continue
@@ -259,8 +227,8 @@ class PlannerDayView:
                 cell_widget.set_grid_info(row_height, max_span)
 
                 for app in valid_apps:
-                    app_start = _mins(app.start_zeit)
-                    app_end = _mins(app.get_end_time())
+                    app_start = mins_from_time(app.start_zeit)
+                    app_end = mins_from_time(app.get_end_time())
                     if app_end <= app_start:
                         continue
 
@@ -290,14 +258,7 @@ class PlannerDayView:
         if room_filter:
             conflicts = [c for c in conflicts if c.raum_id == room_filter]
 
-        if not conflicts:
-            self.conflict_lbl.setText("Konflikte: keine ✅")
-        else:
-            first = conflicts[0]
-            more = "" if len(conflicts) == 1 else f" (+{len(conflicts)-1} weitere)"
-            self.conflict_lbl.setText(
-                f"Konflikte: Raum {first.raum_id} {fmt_date(first.datum)}: {first.termin_a.id} ↔ {first.termin_b.id}{more}"
-            )
+        # Removed conflict_lbl usage
 
         self.day_table.resizeColumnsToContents()
         self.day_table.resizeRowsToContents()
@@ -345,7 +306,7 @@ class PlannerDayView:
         # Sweep-line grouping to include transitive overlaps
         sorted_items = sorted(
             items,
-            key=lambda x: _mins(x.start_zeit) if x.start_zeit else 0
+            key=lambda x: mins_from_time(x.start_zeit) if x.start_zeit else 0
         )
 
         groups: List[tuple] = []
@@ -357,8 +318,8 @@ class PlannerDayView:
             if not t.start_zeit or not t.get_end_time():
                 continue
 
-            t_start = _mins(t.start_zeit)
-            t_end = _mins(t.get_end_time())
+            t_start = mins_from_time(t.start_zeit)
+            t_end = mins_from_time(t.get_end_time())
 
             if current_end is None:
                 current_group = [t]

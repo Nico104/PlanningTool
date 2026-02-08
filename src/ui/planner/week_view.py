@@ -6,23 +6,12 @@ from PySide6.QtGui import QColor, QBrush
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QDateEdit, QHeaderView, QSizePolicy
 
 from ...core.models import Termin
-from ..utils.datetime_utils import qdate_to_date, monday_of, fmt_time
+from ..utils.datetime_utils import qdate_to_date, monday_of, fmt_time, mins_from_time
+from ..utils.color_constants import TYPE_COLORS, DEFAULT_BG, DEFAULT_FG
 from .state import PlannerState
 from ..utils.datetime_utils import date_to_qdate
 from .cell import TimeSlotCell, TerminCard
 
-
-def _mins(t: time) -> int:
-    return t.hour * 60 + t.minute
-
-TYPE_COLORS = [
-    ("VO", QColor("#E3F2FD")),  # light blue
-    ("UE", QColor("#E8F5E9")),  # light green
-    ("LU", QColor("#FFF3E0")),  # light orange
-    ("SE", QColor("#F3E5F5")),  # light purple
-]
-DEFAULT_BG = QColor("#F7F7F7")
-DEFAULT_FG = QColor("#111111")
 
 
 class PlannerWeekView:
@@ -206,8 +195,8 @@ class PlannerWeekView:
                 if not valid_apps:
                     continue
 
-                group_start_min = min(_mins(app.start_zeit) for app in valid_apps)
-                group_end_min = max(_mins(app.get_end_time()) for app in valid_apps)
+                group_start_min = min(mins_from_time(app.start_zeit) for app in valid_apps)
+                group_end_min = max(mins_from_time(app.get_end_time()) for app in valid_apps)
 
                 if group_end_min <= group_start_min:
                     continue
@@ -236,8 +225,8 @@ class PlannerWeekView:
                 cell_widget.set_grid_info(row_height, max_span)
 
                 for app in valid_apps:
-                    app_start = _mins(app.start_zeit)
-                    app_end = _mins(app.get_end_time())
+                    app_start = mins_from_time(app.start_zeit)
+                    app_end = mins_from_time(app.get_end_time())
                     if app_end <= app_start:
                         continue
 
@@ -290,7 +279,7 @@ class PlannerWeekView:
         
         sorted_items = sorted(
             items,
-            key=lambda x: _mins(x.start_zeit) if x.start_zeit else 0
+            key=lambda x: mins_from_time(x.start_zeit) if x.start_zeit else 0
         )
 
         groups: List[tuple] = []
@@ -302,8 +291,8 @@ class PlannerWeekView:
             if not t.start_zeit or not t.get_end_time():
                 continue
 
-            t_start = _mins(t.start_zeit)
-            t_end = _mins(t.get_end_time())
+            t_start = mins_from_time(t.start_zeit)
+            t_end = mins_from_time(t.get_end_time())
 
             if current_end is None:
                 current_group = [t]
