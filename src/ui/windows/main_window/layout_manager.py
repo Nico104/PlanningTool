@@ -8,12 +8,10 @@ class LayoutManager:
         self._layouts: dict[str, bytes] = {}
         self._current_layout_name: str | None = None
 
-        # Actions aus dem Menü verbinden (wurden in actions.build_menus erstellt)
         self.mw.act_save_layout.triggered.connect(self._save_layout_dialog)
         self.mw.act_reset_layouts.triggered.connect(self._reset_default_layouts)
 
     def init_default(self) -> None:
-        # Default Layout nach Dock-Setup speichern
         self._layouts["Standard"] = self.mw.saveState()
         self._current_layout_name = "Standard"
         self._rebuild_layout_menu_items()
@@ -26,7 +24,6 @@ class LayoutManager:
         lm.addAction(self.mw.act_reset_layouts)
         lm.addSeparator()
 
-        # ActionGroup neu erstellen, damit checked sauber ist
         self.mw.layout_group = QActionGroup(self.mw)
         self.mw.layout_group.setExclusive(True)
 

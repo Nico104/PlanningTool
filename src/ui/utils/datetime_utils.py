@@ -31,5 +31,4 @@ def monday_of(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 def mins_from_time(t: time) -> int:
-    """Return the number of minutes since midnight for a time object."""
     return t.hour * 60 + t.minute

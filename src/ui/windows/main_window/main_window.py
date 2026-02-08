@@ -13,7 +13,7 @@ from src.core.states import FilterState
 from ...utils.crud_handlers import CrudHandlers
 from .layout_manager import LayoutManager
 from src.ui.planner.workspace import PlannerWorkspace
-
+from ...dialogs import SettingsDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path):
@@ -25,19 +25,23 @@ class MainWindow(QMainWindow):
 
         # self.setCentralWidget(QWidget())
 
-        # Menüs + Settings Handler
+        
         self._build_menus()
 
-        # initial (shared) filter state owned by MainWindow
         self.filter_state = FilterState()
 
         # Dock options
-        self._setup_dock_options()
+        self.setDockOptions(
+            QMainWindow.AllowTabbedDocks |
+            QMainWindow.AllowNestedDocks |
+            QMainWindow.AnimatedDocks |
+            QMainWindow.GroupedDragging
+        )
 
         # Docks
         self._setup_docks()
 
-        # Handler/Manager
+       
         self.crud = CrudHandlers(self)
         self.layout_mgr = LayoutManager(self)
 
@@ -48,11 +52,8 @@ class MainWindow(QMainWindow):
         self.refresh_everything()
         self.layout_mgr.init_default()
 
-    # ---------- Setup
 
     def open_settings(self) -> None:
-        from ...dialogs import SettingsDialog  # local import to avoid cycles
-
         cur = self.ds.load_settings()
         dlg = SettingsDialog(self, cur)
         if dlg.exec() != QDialog.Accepted or not dlg.result_settings:
@@ -89,43 +90,31 @@ class MainWindow(QMainWindow):
         self.act_save_layout = QAction("Aktuelles Layout speichern…", self)
         self.act_reset_layouts = QAction("Layouts zurücksetzen", self)
 
-    def _setup_dock_options(self) -> None:
-        self.setDockOptions(
-            QMainWindow.AllowTabbedDocks |
-            QMainWindow.AllowNestedDocks |
-            QMainWindow.AnimatedDocks |
-            QMainWindow.GroupedDragging
-        )
+    
 
 
         
     def _setup_docks(self) -> None:
-        # Global filters dock (shared) — create first so planner can use its widgets
         self.global_filter_dock = GlobalFilterDock(self)
         self.global_filter_dock.setObjectName("dock_global_filters")
         self.addDockWidget(Qt.TopDockWidgetArea, self.global_filter_dock)
 
-        # Planner (uses widgets from global_filter_dock)
         self.planner = PlannerWorkspace(self, self.ds, on_data_changed=self.refresh_docks, global_filter_dock=self.global_filter_dock)
         self.setCentralWidget(self.planner)
         self.centralWidget().setMinimumWidth(self.width() * 0.75)
 
-        # Termine (bleibt)
         self.termine_dock = TermineDock(self)
         self.termine_dock.setObjectName("dock_termine")
         self.addDockWidget(Qt.LeftDockWidgetArea, self.termine_dock)
         self.termine_dock.setMinimumWidth(self.width() * 0.35)
         self.resizeDocks([self.termine_dock], [self.width() * 0.75], Qt.Horizontal)
 
-        # Data Editor (LVA+Räume+Semester+Freie Tage)
         self.data_editor_dock = DataEditorDock(self, ds=self.ds, data_dir=self.data_dir, on_data_changed=self.refresh_docks)
         self.data_editor_dock.setObjectName("dock_data_editor")
-        # self.addDockWidget(Qt.DockWidgetArea, self.data_editor_dock)
 
         self.tabifyDockWidget(self.termine_dock, self.data_editor_dock)
         self.termine_dock.raise_()
 
-        # Conflicts dock (right side)
         self.conflicts_dock = ConflictsDock(self)
         self.conflicts_dock.setObjectName("dock_conflicts")
         self.addDockWidget(Qt.RightDockWidgetArea, self.conflicts_dock)
@@ -140,7 +129,7 @@ class MainWindow(QMainWindow):
         # Conflicts
         self.conflicts_dock.conflict_items_highlight.connect(self.planner.highlight_termine)
 
-        # LVA dock (nur Kontextmenü)
+        # LVA dock
         # self.lva_dock.edit_clicked.connect(self.crud.edit_lva)
         # self.lva_dock.delete_clicked.connect(self.crud.del_lva)
 
@@ -154,9 +143,6 @@ class MainWindow(QMainWindow):
         # Global filters
         self.global_filter_dock.filtersChanged.connect(self._on_global_filters_changed)
 
-        # Wire view/navigation/date widgets to planner behavior
-        # Planner connects to these widgets internally, but ensure navigation
-        # buttons call planner navigation as well.
         self.global_filter_dock.navPrev.connect(self._on_nav_prev)
         self.global_filter_dock.navNext.connect(self._on_nav_next)
         self.global_filter_dock.viewChanged.connect(self._on_view_changed)
@@ -164,26 +150,12 @@ class MainWindow(QMainWindow):
         self.global_filter_dock.weekFromChanged.connect(self._on_week_from_changed)
 
     def _on_global_filters_changed(self, fs: FilterState) -> None:
-        """Update the shared FilterState and refresh views that depend on it.
-
-        This method owns updating the central FilterState (MainWindow-owned)
-        and then triggers refreshes on PlannerWorkspace and TermineDock.
-        """
-        # update central state
         self.filter_state = fs
 
-        # Let planner reflect the UI state (read-only sync) and refresh
-        try:
-            self.planner.set_global_filter_state(fs)
-        except Exception:
-            # planner may not implement the sync method yet; ignore
-            pass
-
+        self.planner.set_global_filter_state(fs)
         terms = self._compute_filtered_termine(fs)
-
         self.termine_dock.set_rows(terms, self.planner.state.lvas, self.planner.state.raeume)
 
-    # ---------- refresh
     
     def _on_unassign_termin(self, tid: str):
         if self.planner.crud.unassign_termin(tid):
@@ -208,36 +180,29 @@ class MainWindow(QMainWindow):
         self.planner.refresh(emit=True)
 
     def refresh_conflicts(self) -> None:
-        """Refresh the conflicts dock with current Termine."""
-        # Initialize detector if not already done
         self.conflicts_dock.initialize_detector(
             self.planner.state.lvas,
             self.planner.state.raeume,
             self.planner.state.semester
         )
         
-        # Check all termine for conflicts (not filtered)
         self.conflicts_dock.refresh_conflicts(self.planner.state.termine)
 
         
     def refresh_docks(self) -> None:
-        # prefer central filter_state if present, otherwise fall back to planner's local filters
-        fs = getattr(self, "filter_state", None)
-        terms = self._compute_filtered_termine(fs)
+        # always use central filter_state
+        terms = self._compute_filtered_termine(self.filter_state)
 
         # keep global filter dock in sync with available data
-        try:
-            lva_list = getattr(self.planner.state, "lvas", None) or []
-            typ_list = [t.typ for t in getattr(self.planner.state, "termine", []) if getattr(t, "typ", None)]
-            self.global_filter_dock.refresh_filter_options(
-                self.planner.state.semester,
-                lva_list,
-                self.planner.state.raeume,
-                typ_list=typ_list,
-                current=self.filter_state,
-            )
-        except Exception:
-            pass
+        lva_list = getattr(self.planner.state, "lvas", None) or []
+        typ_list = [t.typ for t in getattr(self.planner.state, "termine", []) if getattr(t, "typ", None)]
+        self.global_filter_dock.refresh_filter_options(
+            self.planner.state.semester,
+            lva_list,
+            self.planner.state.raeume,
+            typ_list=typ_list,
+            current=self.filter_state,
+        )
 
         self.termine_dock.set_rows(terms, self.planner.state.lvas, self.planner.state.raeume)
 
