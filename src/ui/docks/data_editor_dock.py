@@ -54,6 +54,9 @@ class DataEditorDock(QDockWidget):
 
         self.setWidget(wrap)
 
+        # Connect tab change signal to refresh Termine tab
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
         self._crud = CrudHandlers(
             ds=self.ds,
             parent=self,
@@ -85,6 +88,12 @@ class DataEditorDock(QDockWidget):
         self.tab_termine.add_clicked.connect(self._crud.add_termin)
         self.tab_termine.edit_clicked.connect(self._crud.edit_termin)
         self.tab_termine.delete_clicked.connect(self._crud.del_termin)
+
+    def _on_tab_changed(self, index):
+        # Only trigger refresh if switching from another tab to Termine
+        if self.tabs.widget(index) == self.tab_termine:
+            if self.on_data_changed:
+                self.on_data_changed()
 
 
     def refresh_all(self) -> None:

@@ -25,13 +25,14 @@ class TerminDialog(QDialog):
         super().__init__(parent)
         self.new_id = new_id
         self.termin = termin  # Store for access in other methods
-        self.setObjectName("TerminDialog")
+        self.setObjectName("AppDialog")
         self.setModal(True)
         self.settings = settings or {}
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
         lay.setSpacing(12)
+        self.setMinimumWidth(400)
 
         form = QFormLayout()
         form.setHorizontalSpacing(12)
@@ -58,7 +59,7 @@ class TerminDialog(QDialog):
         self.date_de.setCalendarPopup(True)
 
         # Sentinel for unassigned date
-        self._unassigned_qdate = QDate(2000, 1, 1)
+        self._unassigned_qdate = QDate(2026, 1, 1)
         self.date_de.setMinimumDate(self._unassigned_qdate)
         self.date_de.setSpecialValueText("Kein Datum zugewiesen")
         self.date_de.setDate(self._unassigned_qdate)

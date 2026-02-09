@@ -1,5 +1,6 @@
 from datetime import date
 from typing import Any, Dict, Optional
+from PySide6.QtCore import Qt
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -19,26 +20,40 @@ class FreieTageDialog(QDialog):
 
     def __init__(self, parent: QWidget, item: Optional[Dict[str, Any]] = None):
         super().__init__(parent)
+        self.setObjectName("AppDialog")
         self.setWindowTitle("Freier Tag bearbeiten" if item else "Freien Tag hinzufügen")
+        self.setModal(True)
         self._result: Optional[Dict[str, Any]] = None
 
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setSpacing(12)
+        self.setMinimumWidth(400)
+
         form = QFormLayout()
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(10)
+        form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
         lay.addLayout(form)
 
         self.art_cb = QComboBox()
+        self.art_cb.setObjectName("HeaderCombo")
         self.art_cb.addItems(["single", "range"])
 
         self.datum_de = QDateEdit()
         self.datum_de.setCalendarPopup(True)
+        self.datum_de.setObjectName("DateEdit")
 
         self.von_de = QDateEdit()
         self.von_de.setCalendarPopup(True)
+        self.von_de.setObjectName("DateEdit")
 
         self.bis_de = QDateEdit()
         self.bis_de.setCalendarPopup(True)
+        self.bis_de.setObjectName("DateEdit")
 
         self.beschr_le = QLineEdit()
+        self.beschr_le.setObjectName("Field")
 
         today = date.today()
         self.datum_de.setDate(date_to_qdate(today))
