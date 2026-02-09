@@ -44,12 +44,6 @@ class TerminDialog(QDialog):
         self.setWindowTitle("Termin bearbeiten" if termin else "Termin hinzufügen")
         self._result: Optional[Termin] = None
 
-        # lay = QVBoxLayout(self)
-        # form = QFormLayout()
-        # lay.addLayout(form)
-
-        # Removed ID edit field
-
         self.lva_cb = TightComboBox()
         for l in lvas:
             self.lva_cb.addItem(f"{l.id} – {l.name}", l.id)
