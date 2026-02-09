@@ -125,6 +125,7 @@ class CrudHandlers:
             raeume=self.ds.load_raeume(),
             termin=None,
             settings=self.ds.load_settings(),
+            new_id=self._new_termin_id(),
         )
         if auto_id:
             dlg.id_le.setText(self._new_termin_id())

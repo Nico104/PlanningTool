@@ -22,7 +22,7 @@
       "start_zeit": "10:25",
       "raum_id": "LAB3",
       "gruppe": null,
-      "anwesenheitspflicht": false,
+      "anwesenheitspflicht": true,
       "notiz": "",
       "duration": 90
     },
@@ -54,6 +54,19 @@
       "anwesenheitspflicht": true,
       "notiz": "",
       "duration": 30
+    },
+    {
+      "id": "T006",
+      "lva_id": "123.456",
+      "semester_id": "SS2026",
+      "typ": "VO",
+      "datum": "2026-02-09",
+      "start_zeit": "08:00",
+      "raum_id": "E17",
+      "gruppe": null,
+      "anwesenheitspflicht": false,
+      "notiz": "",
+      "duration": 0
     }
   ]
 }

@@ -334,9 +334,6 @@ QCalendarWidget QAbstractItemView:disabled {
   color: #b9b9b9;
 }
 
-
-
-
 /* =========================================================
    Tables (Day/Week planner)
    ========================================================= */
@@ -865,71 +862,86 @@ QGroupBox::title {
 
 QCalendarWidget QWidget {
   background: #ffffff;
-  color: #111111;
+  color: #222222;
+  font-size: 13px;
+  border-radius: 8px;
 }
 
 QCalendarWidget {
   background: #ffffff;
   border: 1px solid #e5e5e5;
-  border-radius: 6px;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  padding: 8px;
 }
 
 QCalendarWidget QToolButton {
-  background: #f5f5f5;
-  border: none;
-  border-radius: 4px;
+  background: #f8f8f8;
+  color: #222222;
+  font-size: 13px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
   padding: 6px 10px;
-  color: #111;
   font-weight: 500;
-  font-size: 11px;
+  transition: background 0.2s, color 0.2s;
 }
 
 QCalendarWidget QToolButton:hover {
-  background: #eeeeee;
+  background: #e8f4ff;
+  color: #111111;
+}
+
+QCalendarWidget QMenu {
+  background: #ffffff;
+  border: 1px solid #e7e7e7;
+  border-radius: 10px;
+  font-size: 13px;
 }
 
 QCalendarWidget QAbstractItemView {
-  selection-background-color: #111111;
+  selection-background-color: #1e40af;
   selection-color: #ffffff;
   background: #ffffff;
   border: none;
   outline: 0;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 QCalendarWidget QAbstractItemView:disabled {
-  color: #c0c0c0;
+  color: #d0d0d0;
 }
 
-/* =========================================================
-   Generic Frame styling
-   ========================================================= */
-
-QFrame {
-  color: #111111;
-  background: transparent;
+QCalendarWidget QAbstractItemView::item {
+  border-radius: 6px;
+  margin: 2px;
 }
 
-QFrame[frameShape="StyledPanel"] {
-  border: 1px solid #e5e5e5;
+QCalendarWidget QAbstractItemView::item:selected {
+  background: #1e40af;
+  color: #ffffff;
   border-radius: 6px;
 }
 
-/* =========================================================
-   Main window & central widget
-   ========================================================= */
-
-QMainWindow {
+QCalendarWidget QAbstractItemView::item:enabled:!selected {
   background: #ffffff;
-  color: #111111;
+  color: #222222;
 }
 
-QMainWindow::separator {
-  width: 4px;
-  height: 4px;
-  background: transparent;
+QCalendarWidget QAbstractItemView::item:enabled[day="6"], QCalendarWidget QAbstractItemView::item:enabled[day="7"] {
+  color: #d32f2f;
+  font-weight: 600;
 }
 
-QMainWindow::separator:hover {
-  background: #e5e5e5;
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+  background: #f8f8f8;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 0 4px 0;
+}
+
+QCalendarWidget QSpinBox {
+  background: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #222222;
 }

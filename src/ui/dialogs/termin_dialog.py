@@ -1,17 +1,17 @@
 from datetime import date, time
 from typing import List, Optional, Dict
 
-from PySide6.QtCore import QTime, QDate, Qt, QEvent, QTimer
+from PySide6.QtCore import QTime, QDate, Qt, QEvent, QTimer, QSize
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QFormLayout, QLineEdit, QDialog, QDialogButtonBox, QMessageBox,
     QComboBox, QDateEdit, QTimeEdit, QCheckBox, QSpinBox, QTextEdit
 )
+from PySide6.QtGui import QIcon
 
 from ...core.models import Termin, Gruppe, Lehrveranstaltung, Semester, Raum
 from ..utils.datetime_utils import date_to_qdate, qdate_to_date
 
 from ..components.widgets.tight_combobox import TightComboBox
-
 
 class TerminDialog(QDialog):
     def __init__(self, parent: QWidget, *,
@@ -19,10 +19,12 @@ class TerminDialog(QDialog):
                  semester: List[Semester],
                  raeume: List[Raum],
                  termin: Optional[Termin] = None,
-                 settings: Optional[Dict] = None):
+                 settings: Optional[Dict] = None,
+                 new_id = None,
+                 ):
         super().__init__(parent)
-        
-        
+        self.new_id = new_id
+        self.termin = termin  # Store for access in other methods
         self.setObjectName("TerminDialog")
         self.setModal(True)
         self.settings = settings or {}
@@ -46,7 +48,7 @@ class TerminDialog(QDialog):
         # form = QFormLayout()
         # lay.addLayout(form)
 
-        self.id_le = QLineEdit(termin.id if termin else "")
+        # Removed ID edit field
 
         self.lva_cb = TightComboBox()
         for l in lvas:
@@ -90,6 +92,23 @@ class TerminDialog(QDialog):
 
         self.ap_cb = QCheckBox("Anwesenheitspflicht")
         self.ap_cb.setChecked(bool(termin.anwesenheitspflicht) if termin else False)
+        # Use QSS to show the SVG inside the checkbox indicator
+        check_icon_path = "src/ui/assets/icons/check-marksvg.svg"
+        self.ap_cb.setStyleSheet(f"""
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                background: transparent;
+            }}
+            QCheckBox::indicator:unchecked {{
+                image: none;
+            }}
+            QCheckBox::indicator:checked {{
+                image: url('{check_icon_path}');
+            }}
+        """)
 
         self.note_te = QTextEdit()
         self.note_te.setFixedHeight(60)
@@ -147,15 +166,10 @@ class TerminDialog(QDialog):
 
         # Connect time changes to update duration
         self.time_from.timeChanged.connect(lambda *_: _update_duration_display())
-
-        # bei jeder Datum-Änderung aktualisieren
         self.date_de.dateChanged.connect(lambda *_: _on_date_changed())
 
-        # einmal initial setzen
         _sync_time_enabled()
 
-
-        form.addRow("Termin-ID:", self.id_le)
         form.addRow("LVA:", self.lva_cb)
         form.addRow("Semester:", self.sem_cb)
         form.addRow("Typ:", self.typ_le)
@@ -173,7 +187,7 @@ class TerminDialog(QDialog):
         # bb.rejected.connect(self.reject)
         # lay.addWidget(bb)
         
-        self.id_le.setObjectName("Field")
+        # Removed ID object name
         self.lva_cb.setObjectName("HeaderCombo")
         self.sem_cb.setObjectName("HeaderCombo")
         self.typ_le.setObjectName("Field")
@@ -209,10 +223,7 @@ class TerminDialog(QDialog):
                 return
 
     def _accept(self):
-        tid = self.id_le.text().strip()
-        if not tid:
-            QMessageBox.warning(self, "Fehler", "Termin-ID ist Pflicht.")
-            return
+        # Removed ID field validation and assignment
 
         lva_id = str(self.lva_cb.currentData())
         sem_id = str(self.sem_cb.currentData())
@@ -243,19 +254,37 @@ class TerminDialog(QDialog):
         # Duration: always save the user-entered value
         duration_value = int(self.duration_sb.value())
 
-        self._result = Termin(
-            id=tid,
-            lva_id=lva_id,
-            semester_id=sem_id,
-            typ=typ,
-            datum=d,
-            start_zeit=start_zeit,
-            raum_id=raum_id,
-            gruppe=gruppe,
-            anwesenheitspflicht=bool(self.ap_cb.isChecked()),
-            notiz=self.note_te.toPlainText().strip(),
-            duration=duration_value,
-        )
+
+
+        # Use self.termin to access the original termin (may be None)
+        if self.termin is not None and hasattr(self.termin, 'id'):
+            self._result = Termin(
+                id=self.termin.id,
+                lva_id=lva_id,
+                semester_id=sem_id,
+                typ=typ,
+                datum=d,
+                start_zeit=start_zeit,
+                raum_id=raum_id,
+                gruppe=gruppe,
+                anwesenheitspflicht=bool(self.ap_cb.isChecked()),
+                notiz=self.note_te.toPlainText().strip(),
+                duration=duration_value,
+            )
+        else:
+            self._result = Termin(
+                id=self.new_id,
+                lva_id=lva_id,
+                semester_id=sem_id,
+                typ=typ,
+                datum=d,
+                start_zeit=start_zeit,
+                raum_id=raum_id,
+                gruppe=gruppe,
+                anwesenheitspflicht=bool(self.ap_cb.isChecked()),
+                notiz=self.note_te.toPlainText().strip(),
+                duration=duration_value,
+            )
         self.accept()
 
     @property
