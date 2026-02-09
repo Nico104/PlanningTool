@@ -225,33 +225,23 @@ class TerminDialog(QDialog):
         raum_id = str(self.raum_cb.currentData())
         typ = self.typ_le.text().strip().upper()
 
-        # ✅ Datum: erlaubt "unassigned"
-        # qd = self.date_de.date()
-        # d = qdate_to_date(qd) if qd.isValid() else None
-        
         qd = self.date_de.date()
         d = None if qd == self._unassigned_qdate else qdate_to_date(qd)
 
-
-        # ✅ Zeit: nur erzwingen, wenn Datum gesetzt ist
         start_zeit = None
         if d is not None:
             tf = self.time_from.time()
             start_zeit = time(tf.hour(), tf.minute())
-
-        # ✅ Gruppe: null, wenn nichts eingegeben (statt "-" und 0)
         gname = self.grp_name.text().strip()
         gsize = int(self.grp_size.value())
         gruppe = None
+        # Create Gruppe object if name or size is provided
         if gname or gsize > 0:
             gruppe = Gruppe(name=gname, groesse=gsize)
 
         # Duration: always save the user-entered value
         duration_value = int(self.duration_sb.value())
 
-
-
-        # Use self.termin to access the original termin (may be None)
         if self.termin is not None and hasattr(self.termin, 'id'):
             self._result = Termin(
                 id=self.termin.id,
@@ -287,7 +277,7 @@ class TerminDialog(QDialog):
         return self._result
 
     def eventFilter(self, obj, event):
-        """Handle calendar popup to show today's date when unassigned."""
+        #Handle calendar popup to show today's date when unassigned
         if obj == self.date_de and not self._calendar_shown:
             if event.type() == QEvent.Type.MouseButtonPress or event.type() == QEvent.Type.KeyPress:
                 # User is about to open the calendar
@@ -295,7 +285,6 @@ class TerminDialog(QDialog):
                     # Set calendar to show today
                     self._calendar_shown = True
                     try:
-                        # Use QTimer to set the calendar date after it's shown
                         def set_calendar():
                             cal = self.date_de.calendarWidget()
                             if cal:
