@@ -128,7 +128,7 @@ class PlannerDayView:
 
         self.day_table.setRowCount(len(slots))
         self.day_table.setColumnCount(1 + len(rooms))
-        headers = ["Zeit"] + [f"{r.id}\\n{r.name}" for r in rooms]
+        headers = ["Zeit"] + [r.name for r in rooms]
         self.day_table.setHorizontalHeaderLabels(headers)
 
         # header sizing: time column compact, rooms stretch
