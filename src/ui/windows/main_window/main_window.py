@@ -45,13 +45,13 @@ class MainWindow(QMainWindow):
         self.crud = CrudHandlers(self)
         self.layout_mgr = LayoutManager(self)
 
-        # Signals
+      
         self._wire_signals()
 
         # initial refresh
         self.refresh_everything()
         self.layout_mgr.init_default()
-        # Start maximized with window controls
+        
         self.showMaximized()
 
 
@@ -71,29 +71,25 @@ class MainWindow(QMainWindow):
     def _build_menus(self) -> None:
         mb = self.menuBar()
 
+        #Datei Menu
         file_menu = mb.addMenu("Datei")
-        self.view_menu = mb.addMenu("Ansicht")
-        tools_menu = mb.addMenu("Tools")
-
-        self.act_settings = QAction("Settings…", self)
-        self.act_settings.triggered.connect(self.open_settings)
-
         self.act_refresh = QAction("Aktualisieren", self)
         self.act_refresh.triggered.connect(self.refresh_everything)
-
-        # Add 'Refresh Everything' to the main menu bar
-        mb.addAction(self.act_refresh)
-
-        tools_menu.addAction(self.act_settings)
         file_menu.addAction(self.act_refresh)
 
+        #Ansicht Menu
+        self.view_menu = mb.addMenu("Ansicht")
         self.layout_menu = self.view_menu.addMenu("Layout")
-
         self.layout_group = QActionGroup(self)
         self.layout_group.setExclusive(True)
-
         self.act_save_layout = QAction("Aktuelles Layout speichern…", self)
         self.act_reset_layouts = QAction("Layouts zurücksetzen", self)
+
+        #Tools Menu
+        tools_menu = mb.addMenu("Tools")
+        self.act_settings = QAction("Settings…", self)
+        self.act_settings.triggered.connect(self.open_settings)
+        tools_menu.addAction(self.act_settings)
 
     
 
