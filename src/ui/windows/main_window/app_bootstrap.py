@@ -32,7 +32,7 @@ def run_gui() -> None:
     load_global_style(app)
 
     w = MainWindow(Path("data"))
-    w.resize(1500, 900)
+    # w.resize(1500, 900)
     w.show()
 
     app.exec()
