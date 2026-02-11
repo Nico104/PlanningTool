@@ -37,6 +37,8 @@ class MainWindow(QMainWindow):
             QMainWindow.AnimatedDocks |
             QMainWindow.GroupedDragging
         )
+        
+        self.showMaximized()
 
         # Docks
         self._setup_docks()
@@ -79,8 +81,6 @@ class MainWindow(QMainWindow):
         self.act_refresh = QAction("Aktualisieren", self)
         self.act_refresh.triggered.connect(self.refresh_everything)
 
-        # Add 'Refresh Everything' to the main menu bar
-        mb.addAction(self.act_refresh)
 
         tools_menu.addAction(self.act_settings)
         file_menu.addAction(self.act_refresh)
