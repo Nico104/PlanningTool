@@ -1,42 +1,10 @@
-"""
-Conflict detection service for schedule conflicts and warnings.
-
-Detects:
-- Room conflicts (same room, date, overlapping time)
-- Group conflicts (same LVA + group, date, overlapping time)
-- Lecturer conflicts (same lecturer, date, overlapping time)
-- Warnings for incomplete/unassigned Termine
-- Warnings for dates outside planning period
-
-EXTENDING WITH NEW CONFLICT TYPES:
-====================================
-To add a new conflict detection rule, simply add a method to the ConflictDetector class
-with one of these naming patterns:
-
-1. For hard conflicts: `def detect_<name>_conflicts(self, termine: List[Termin]) -> List[ConflictIssue]:`
-2. For warnings: `def detect_<name>_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:`
-
-The method will be automatically discovered and called by detect_all()!
-
-Example:
-    def detect_capacity_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-        '''Detect when group size exceeds room capacity.'''
-        warnings = []
-        for t in termine:
-            raum = self.raum_map.get(t.raum_id)
-            if raum and t.gruppe and t.gruppe.groesse > raum.kapazitaet:
-                warnings.append(ConflictIssue(...))
-        return warnings
-
-That's it! No need to modify detect_all() or register anything.
-"""
-
 from datetime import date, time
 from typing import List, Dict, Optional, Tuple, Callable
 import os
 import json
 from ..core.models import Termin, Lehrveranstaltung, Raum, Semester, ConflictIssue
-# Utility functions for loading/saving conflicts JSON
+
+
 def load_conflicts(path=None):
     """Load conflicts from a JSON file."""
     path = path or "data/konflikte.json"
@@ -58,8 +26,7 @@ def save_conflicts(conflicts, path=None):
         print(f"[conflict_service] Fehler beim Speichern: {e}")
 
 
-# Sentinel date for unassigned Termine
-UNASSIGNED_DATE = date(2000, 1, 1)
+UNASSIGNED_DATE = date(2026, 1, 1)
 
 
 class ConflictDetector:
@@ -153,14 +120,7 @@ class ConflictDetector:
                         issues.extend(detected)
         return issues
     
-    # ========================================================================
-    # CONFLICT DETECTORS
-    # ========================================================================
-    # Add new detection methods here with naming pattern:
-    # - detect_<name>_conflicts(termine, settings) for hard conflicts
-    # - detect_<name>_warnings(termine, settings) for soft warnings
-    # They will be automatically discovered and called!
-    # ========================================================================
+    
     
     def detect_incomplete_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
         """Detect warnings for incomplete or unassigned Termine. Uses settings if provided."""
@@ -294,6 +254,113 @@ class ConflictDetector:
                 warnings.append(ConflictIssue(
                     severity="warning",
                     category="time_period",
+                    termin_ids=[t.id],
+                    message=msg,
+                    datum=t.datum,
+                    zeit_von=t.start_zeit,
+                    zeit_bis=t.get_end_time(),
+                    raum=raum.name if raum else "",
+                    lva=lva.name if lva else t.lva_id,
+                    gruppe=t.gruppe.name if t.gruppe else ""
+                ))
+        return warnings
+    
+    def detect_duration_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for Termine that are unusually short (<30min) or long (>4h)."""
+        warnings = []
+        min_minutes = 30
+        max_minutes = 240
+        for t in termine:
+            if not self.is_assigned(t):
+                continue
+            duration = t.duration
+            if duration > 0 and (duration < min_minutes or duration > max_minutes):
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
+                msg = f"Ungewöhnliche Dauer: {duration} Minuten."
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
+                warnings.append(ConflictIssue(
+                    severity="warning",
+                    category="duration",
+                    termin_ids=[t.id],
+                    message=msg,
+                    datum=t.datum,
+                    zeit_von=t.start_zeit,
+                    zeit_bis=t.get_end_time(),
+                    raum=raum.name if raum else "",
+                    lva=lva.name if lva else t.lva_id,
+                    gruppe=t.gruppe.name if t.gruppe else ""
+                ))
+        return warnings
+
+    def detect_weekend_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for Termine that fall on a weekend (Saturday or Sunday)."""
+        warnings = []
+        for t in termine:
+            if not t.datum:
+                continue
+            if t.datum.weekday() >= 5:  # 5=Saturday, 6=Sunday
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
+                msg = "Termin liegt auf einem Wochenende."
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
+                warnings.append(ConflictIssue(
+                    severity="warning",
+                    category="weekend",
+                    termin_ids=[t.id],
+                    message=msg,
+                    datum=t.datum,
+                    zeit_von=t.start_zeit,
+                    zeit_bis=t.get_end_time(),
+                    raum=raum.name if raum else "",
+                    lva=lva.name if lva else t.lva_id,
+                    gruppe=t.gruppe.name if t.gruppe else ""
+                ))
+        return warnings
+    
+    def detect_saturday_warning(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for Termine that fall on a Saturday."""
+        warnings = []
+        for t in termine:
+            if not t.datum:
+                continue
+            if t.datum.weekday() == 5:  # Saturday
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
+                msg = "Termin liegt auf einem Samstag."
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
+                warnings.append(ConflictIssue(
+                    severity="warning",
+                    category="saturday",
+                    termin_ids=[t.id],
+                    message=msg,
+                    datum=t.datum,
+                    zeit_von=t.start_zeit,
+                    zeit_bis=t.get_end_time(),
+                    raum=raum.name if raum else "",
+                    lva=lva.name if lva else t.lva_id,
+                    gruppe=t.gruppe.name if t.gruppe else ""
+                ))
+        return warnings
+
+    def detect_sunday_warning(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for Termine that fall on a Sunday."""
+        warnings = []
+        for t in termine:
+            if not t.datum:
+                continue
+            if t.datum.weekday() == 6:  # Sunday
+                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
+                msg = "Termin liegt auf einem Sonntag."
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
+                warnings.append(ConflictIssue(
+                    severity="warning",
+                    category="sunday",
                     termin_ids=[t.id],
                     message=msg,
                     datum=t.datum,

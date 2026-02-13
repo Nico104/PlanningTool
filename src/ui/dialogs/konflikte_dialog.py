@@ -95,6 +95,88 @@ class KonflikteDialog(QDialog):
                 percent_box.valueChanged.connect(on_percent_changed)
                 row_layout.addWidget(percent_inline, alignment=Qt.AlignVCenter)
 
+            # Add min/max duration input for duration_warning
+            if conflict.get('key', '') == 'duration_warning':
+                # Min duration group
+                min_label = QLabel("Min. Dauer:")
+                min_label.setObjectName("ConflictDurationMinLabel")
+                min_box = QSpinBox()
+                min_box.setObjectName("ConflictDurationMinSpin")
+                min_box.setRange(1, 240)
+                min_box.setButtonSymbols(QSpinBox.NoButtons)
+                min_box.setValue(conflict.get('min_minutes', 30))
+                min_box.setMinimumWidth(60)
+                min_box.setMaximumWidth(90)
+                min_box.setFixedHeight(28)
+                min_box.setStyleSheet(
+                    "QSpinBox {"
+                    "  background: #fff;"
+                    "  border: 1px solid #d0d0d0;"
+                    "  border-radius: 4px;"
+                    "  padding: 0 8px 0 8px;"
+                    "  font-size: 14px;"
+                    "}"
+                )
+                min_box.setToolTip('Minimale erlaubte Dauer in Minuten')
+                min_sign = QLabel("min")
+                min_sign.setObjectName("ConflictDurationMinSign")
+                min_group = QWidget()
+                min_group_layout = QHBoxLayout(min_group)
+                min_group_layout.setContentsMargins(0, 0, 0, 0)
+                min_group_layout.setSpacing(4)
+                min_group_layout.addWidget(min_label)
+                min_group_layout.addWidget(min_box)
+                min_group_layout.addWidget(min_sign)
+
+                # Max duration group
+                max_label = QLabel("Max. Dauer:")
+                max_label.setObjectName("ConflictDurationMaxLabel")
+                max_box = QSpinBox()
+                max_box.setObjectName("ConflictDurationMaxSpin")
+                max_box.setRange(30, 600)
+                max_box.setButtonSymbols(QSpinBox.NoButtons)
+                max_box.setValue(conflict.get('max_minutes', 240))
+                max_box.setMinimumWidth(60)
+                max_box.setMaximumWidth(90)
+                max_box.setFixedHeight(28)
+                max_box.setStyleSheet(
+                    "QSpinBox {"
+                    "  background: #fff;"
+                    "  border: 1px solid #d0d0d0;"
+                    "  border-radius: 4px;"
+                    "  padding: 0 8px 0 8px;"
+                    "  font-size: 14px;"
+                    "}"
+                )
+                max_box.setToolTip('Maximale erlaubte Dauer in Minuten')
+                max_sign = QLabel("min")
+                max_sign.setObjectName("ConflictDurationMaxSign")
+                max_group = QWidget()
+                max_group_layout = QHBoxLayout(max_group)
+                max_group_layout.setContentsMargins(0, 0, 0, 0)
+                max_group_layout.setSpacing(4)
+                max_group_layout.addWidget(max_label)
+                max_group_layout.addWidget(max_box)
+                max_group_layout.addWidget(max_sign)
+
+                # Inline layout for min/max duration, with spacing between groups
+                duration_inline = QWidget()
+                duration_inline_layout = QHBoxLayout(duration_inline)
+                duration_inline_layout.setContentsMargins(0, 0, 0, 0)
+                duration_inline_layout.setSpacing(24)  # More space between min and max
+                duration_inline_layout.addWidget(min_group)
+                duration_inline_layout.addWidget(max_group)
+                duration_inline_layout.addStretch(1)
+                def on_min_changed(val, idx=idx):
+                    self.conflicts[idx]['min_minutes'] = val
+                    self.save_conflicts()
+                def on_max_changed(val, idx=idx):
+                    self.conflicts[idx]['max_minutes'] = val
+                    self.save_conflicts()
+                min_box.valueChanged.connect(on_min_changed)
+                max_box.valueChanged.connect(on_max_changed)
+                row_layout.addWidget(duration_inline, alignment=Qt.AlignVCenter)
+
             if 'details' in conflict:
                 edit_btn = QPushButton("Details ändern")
                 edit_btn.setStyleSheet("padding: 2px 10px;")

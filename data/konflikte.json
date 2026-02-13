@@ -57,13 +57,21 @@
         "key": "duration_warning",
         "enabled": true,
         "type": "warning",
-        "description": "Termin ist ungewöhnlich kurz (<30min) oder lang (>4h)."
+        "description": "Termin ist ungewöhnlich kurz (<30min) oder lang (>4h).",
+        "min_minutes": 10
     },
     {
-        "name": "Wochenendwarnung",
-        "key": "weekend_warning",
+        "name": "Samstagswarnung",
+        "key": "saturday_warning",
         "enabled": true,
         "type": "warning",
-        "description": "Termin liegt auf Samstag oder Sonntag."
+        "description": "Termin liegt auf einem Samstag."
+    },
+    {
+        "name": "Sonntagswarnung",
+        "key": "sunday_warning",
+        "enabled": true,
+        "type": "warning",
+        "description": "Termin liegt auf einem Sonntag."
     }
 ]
