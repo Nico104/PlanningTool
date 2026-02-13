@@ -85,25 +85,9 @@ class TerminDialog(QDialog):
         self.duration_sb.setValue(termin.duration if termin else 0)
         self.duration_sb.setSuffix(" min")
 
-        self.ap_cb = QCheckBox("Anwesenheitspflicht")
+        from src.ui.components.widgets.tick_checkbox import TickCheckBox
+        self.ap_cb = TickCheckBox("Anwesenheitspflicht")
         self.ap_cb.setChecked(bool(termin.anwesenheitspflicht) if termin else False)
-        # Use QSS to show the SVG inside the checkbox indicator
-        check_icon_path = "src/ui/assets/icons/check-marksvg.svg"
-        self.ap_cb.setStyleSheet(f"""
-            QCheckBox::indicator {{
-                width: 18px;
-                height: 18px;
-                border: 1px solid #bbb;
-                border-radius: 4px;
-                background: transparent;
-            }}
-            QCheckBox::indicator:unchecked {{
-                image: none;
-            }}
-            QCheckBox::indicator:checked {{
-                image: url('{check_icon_path}');
-            }}
-        """)
 
         self.note_te = QTextEdit()
         self.note_te.setFixedHeight(60)

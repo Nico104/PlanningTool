@@ -14,6 +14,8 @@ from ...utils.crud_handlers import CrudHandlers
 from .layout_manager import LayoutManager
 from src.ui.planner.workspace import PlannerWorkspace
 from ...dialogs import SettingsDialog
+from src.ui.dialogs.konflikte_dialog import KonflikteDialog
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self, data_dir: Path):
@@ -90,6 +92,18 @@ class MainWindow(QMainWindow):
         self.act_settings = QAction("Settings…", self)
         self.act_settings.triggered.connect(self.open_settings)
         tools_menu.addAction(self.act_settings)
+
+        # Konflikte
+        self.act_konflikte = QAction("Konflikte…", self)
+        self.act_konflikte.triggered.connect(self.open_konflikte_dialog)
+        tools_menu.addAction(self.act_konflikte)
+        
+        
+    def open_konflikte_dialog(self):
+        conflicts_path = os.path.join("data", "konflikte.json")
+        dlg = KonflikteDialog(self, conflicts_path=conflicts_path)
+        dlg.conflicts_changed.connect(self.refresh_conflicts)
+        dlg.exec()
 
     
 

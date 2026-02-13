@@ -33,7 +33,29 @@ That's it! No need to modify detect_all() or register anything.
 
 from datetime import date, time
 from typing import List, Dict, Optional, Tuple, Callable
+import os
+import json
 from ..core.models import Termin, Lehrveranstaltung, Raum, Semester, ConflictIssue
+# Utility functions for loading/saving conflicts JSON
+def load_conflicts(path=None):
+    """Load conflicts from a JSON file."""
+    path = path or "data/konflikte.json"
+    abs_path = os.path.abspath(path)
+    try:
+        with open(abs_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"[conflict_service] Fehler beim Laden: {e}")
+        return []
+
+def save_conflicts(conflicts, path=None):
+    """Save conflicts to a JSON file."""
+    path = path or "data/konflikte.json"
+    try:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(conflicts, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print(f"[conflict_service] Fehler beim Speichern: {e}")
 
 
 # Sentinel date for unassigned Termine
@@ -41,15 +63,23 @@ UNASSIGNED_DATE = date(2000, 1, 1)
 
 
 class ConflictDetector:
-    """Detects scheduling conflicts and warnings."""
-    
+    """Detects scheduling conflicts and warnings, respecting settings from konflikte.json."""
+
     def __init__(self, 
                  lvas: List[Lehrveranstaltung],
                  raeume: List[Raum],
-                 semester_list: List[Semester]):
+                 semester_list: List[Semester],
+                 conflict_settings_path: str = None):
         self.lvas = lvas
         self.raeume = raeume
         self.semester_list = semester_list
+        # Load conflict settings (konflikte.json)
+        self.conflict_settings = {}
+        settings = load_conflicts(conflict_settings_path)
+        for entry in settings:
+            key = entry.get("key")
+            if key:
+                self.conflict_settings[key] = entry
     
     def is_assigned(self, termin: Termin) -> bool:
         """Check if a Termin has a real assigned date (not sentinel/None)."""
@@ -85,69 +115,77 @@ class ConflictDetector:
         return None
     
     def detect_all(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect all conflicts and warnings in the given Termine list.
-        
-        Automatically discovers and calls all detection methods that follow
-        the naming convention: detect_*_conflicts() or detect_*_warnings()
-        """
+        """Detect all conflicts and warnings in the given Termine list, respecting settings from konflikte.json."""
         issues = []
         assigned = [t for t in termine if self.is_assigned(t)]
-        
+
+        # Map method names to settings keys
+        method_to_key = {
+            'detect_room_conflicts': 'room_conflict',
+            'detect_group_conflicts': 'group_conflict',
+            'detect_lecturer_conflicts': 'lecturer_conflict',
+            'detect_incomplete_warnings': 'incomplete_warning',
+            'detect_outside_period_warnings': 'outside_period_warning',
+            'detect_capacity_warnings': 'capacity_warning',
+            'detect_duration_warnings': 'duration_warning',
+            'detect_weekend_warnings': 'weekend_warning',
+        }
+
         # Auto-discover all detection methods
         for method_name in dir(self):
             if method_name.startswith('detect_') and (
                 method_name.endswith('_conflicts') or method_name.endswith('_warnings')
             ):
+                key = method_to_key.get(method_name)
+                settings = self.conflict_settings.get(key, {}) if key else {}
+                enabled = settings.get('enabled', True)
+                if not enabled:
+                    continue
                 method = getattr(self, method_name)
                 if callable(method):
                     # Pass appropriate termine list based on method name
                     # Warnings can check all termine, conflicts typically check assigned only
                     if '_warnings' in method_name:
-                        detected = method(termine)
+                        detected = method(termine, settings)
                     else:
-                        detected = method(assigned)
-                    
+                        detected = method(assigned, settings)
                     if detected:
                         issues.extend(detected)
-        
         return issues
     
     # ========================================================================
     # CONFLICT DETECTORS
     # ========================================================================
     # Add new detection methods here with naming pattern:
-    # - detect_<name>_conflicts(termine) for hard conflicts
-    # - detect_<name>_warnings(termine) for soft warnings
+    # - detect_<name>_conflicts(termine, settings) for hard conflicts
+    # - detect_<name>_warnings(termine, settings) for soft warnings
     # They will be automatically discovered and called!
     # ========================================================================
     
-    def detect_incomplete_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect warnings for incomplete or unassigned Termine."""
+    def detect_incomplete_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for incomplete or unassigned Termine. Uses settings if provided."""
         warnings = []
-        
         for t in termine:
             problems = []
-            
             # Check for missing/unassigned date
             if t.datum is None or t.datum == UNASSIGNED_DATE:
                 problems.append("kein Datum")
-            
             # Check for missing time
             if t.start_zeit is None:
                 problems.append("keine Startzeit")
-            
             # Check for missing/invalid duration
             if t.duration <= 0:
                 problems.append("keine Dauer")
-            
             # Check for missing room
             if not t.raum_id or t.raum_id.strip() == "":
                 problems.append("kein Raum")
-            
             if problems:
                 lva = next((l for l in self.lvas if l.id == t.lva_id), None)
                 raum = next((r for r in self.raeume if r.id == t.raum_id), None)
                 msg = f"Unvollständiger Termin: {', '.join(problems)}"
+                # Optionally use settings['description'] or other details
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
                 warnings.append(ConflictIssue(
                     severity="warning",
                     category="incomplete",
@@ -160,39 +198,33 @@ class ConflictDetector:
                     lva=lva.name if lva else t.lva_id,
                     gruppe=t.gruppe.name if t.gruppe else ""
                 ))
-        
         return warnings
     
-    def detect_room_conflicts(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect room conflicts (same room, date, overlapping time)."""
+    def detect_room_conflicts(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect room conflicts (same room, date, overlapping time). Uses settings if provided."""
         conflicts = []
-        
-        # Group by room and date
         by_room_date: Dict[Tuple[str, date], List[Termin]] = {}
         for t in termine:
             if not t.raum_id or not t.datum:
                 continue
             key = (t.raum_id, t.datum)
             by_room_date.setdefault(key, []).append(t)
-        
-        # Check for overlaps within each group
         for (raum_id, datum), terms in by_room_date.items():
             for i, t1 in enumerate(terms):
                 for t2 in terms[i+1:]:
                     if self.times_overlap(t1, t2):
-                        # Ensure we report each pair only once
                         if t1.id < t2.id:
+                            msg_prefix = "Raum-Konflikt"
+                            if settings and settings.get('description'):
+                                msg_prefix += f" ({settings['description']})"
                             conflicts.append(self._create_conflict(
-                                "room", t1, t2, "Raum-Konflikt"
+                                "room", t1, t2, msg_prefix
                             ))
-        
         return conflicts
     
-    def detect_group_conflicts(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect group conflicts (same LVA + group, date, overlapping time)."""
+    def detect_group_conflicts(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect group conflicts (same LVA + group, date, overlapping time). Uses settings if provided."""
         conflicts = []
-        
-        # Group by LVA, group name, and date
         by_lva_group_date: Dict[Tuple[str, str, date], List[Termin]] = {}
         for t in termine:
             if not t.datum or not t.gruppe:
@@ -200,24 +232,22 @@ class ConflictDetector:
             group_key = t.gruppe.name
             key = (t.lva_id, group_key, t.datum)
             by_lva_group_date.setdefault(key, []).append(t)
-        
-        # Check for overlaps within each group
         for key, terms in by_lva_group_date.items():
             for i, t1 in enumerate(terms):
                 for t2 in terms[i+1:]:
                     if self.times_overlap(t1, t2):
                         if t1.id < t2.id:
+                            msg_prefix = "Gruppen-Konflikt"
+                            if settings and settings.get('description'):
+                                msg_prefix += f" ({settings['description']})"
                             conflicts.append(self._create_conflict(
-                                "group", t1, t2, "Gruppen-Konflikt"
+                                "group", t1, t2, msg_prefix
                             ))
-        
         return conflicts
     
-    def detect_lecturer_conflicts(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect lecturer conflicts (same lecturer, date, overlapping time)."""
+    def detect_lecturer_conflicts(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect lecturer conflicts (same lecturer, date, overlapping time). Uses settings if provided."""
         conflicts = []
-        
-        # Group by lecturer and date
         by_lecturer_date = []
         for t in termine:
             if not t.datum:
@@ -237,28 +267,30 @@ class ConflictDetector:
                 for t2 in terms[i+1:]:
                     if self.times_overlap(t1, t2):
                         if t1.id < t2.id:
+                            msg_prefix = "Vortragenden-Konflikt"
+                            if settings and settings.get('description'):
+                                msg_prefix += f" ({settings['description']})"
                             conflicts.append(self._create_conflict(
-                                "lecturer", t1, t2, "Vortragenden-Konflikt"
+                                "lecturer", t1, t2, msg_prefix
                             ))
         return conflicts
     
-    def detect_outside_period_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-        """Detect warnings for dates outside the planning period."""
+    def detect_outside_period_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        """Detect warnings for dates outside the planning period. Uses settings if provided."""
         warnings = []
-        
         for t in termine:
             if not t.datum or not t.semester_id:
                 continue
-            
             period = self.get_planning_period(t.semester_id)
             if not period:
                 continue
-            
             start, end = period
             if t.datum < start or t.datum > end:
                 lva = next((l for l in self.lvas if l.id == t.lva_id), None)
                 raum = next((r for r in self.raeume if r.id == t.raum_id), None)
                 msg = f"Datum außerhalb des Planungszeitraums ({start.strftime('%d.%m.%Y')} - {end.strftime('%d.%m.%Y')})"
+                if settings and settings.get('description'):
+                    msg += f" ({settings['description']})"
                 warnings.append(ConflictIssue(
                     severity="warning",
                     category="time_period",
@@ -271,7 +303,6 @@ class ConflictDetector:
                     lva=lva.name if lva else t.lva_id,
                     gruppe=t.gruppe.name if t.gruppe else ""
                 ))
-        
         return warnings
     
     def _create_conflict(self, category: str, t1: Termin, t2: Termin, msg_prefix: str) -> ConflictIssue:
@@ -307,86 +338,66 @@ class ConflictDetector:
             gruppe=""  # Could be enhanced to show both groups
         )
 
+# Separate capacity warning for Übung
+    def detect_capacity_warning_uebung(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        warnings = []
+        percent = settings.get('min_capacity_percent', 100) if settings else 100
+        event_type = settings.get('event_type', 'uebung') if settings else 'uebung'
+        for t in termine:
+            if not self.is_assigned(t):
+                continue
+            raum = getattr(t, 'raum', None) or next((r for r in self.raeume if r.id == t.raum_id), None)
+            gruppe = getattr(t, 'gruppe', None)
+            lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+            typ = getattr(t, 'typ', None) or (lva.typ if lva and hasattr(lva, 'typ') else None)
+            if raum and gruppe and (typ == event_type):
+                required = int(gruppe.groesse * percent / 100)
+                if raum.kapazitaet < required:
+                    msg = f"Übung: Gruppe ({gruppe.groesse} Personen) benötigt {percent}% Platz: {required}, Raumkapazität: {raum.kapazitaet}"
+                    if settings and settings.get('description'):
+                        msg += f" ({settings['description']})"
+                    warnings.append(ConflictIssue(
+                        severity="warning",
+                        category="Kapazität Übung",
+                        termin_ids=[t.id],
+                        message=msg,
+                        datum=t.datum,
+                        zeit_von=t.start_zeit,
+                        zeit_bis=t.get_end_time(),
+                        raum=raum.name,
+                        lva=lva.name if lva else t.lva_id,
+                        gruppe=gruppe.name
+                    ))
+        return warnings
 
-# ============================================================================
-# EXAMPLE: How to add a new conflict type
-# ============================================================================
-# Uncomment and customize one of these templates to add your own detector:
-#
-# def detect_capacity_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-#     """Detect when group size exceeds room capacity."""
-#     warnings = []
-#     for t in termine:
-#         if not self.is_assigned(t):
-#             continue
-#         raum = self.raum_map.get(t.raum_id)
-#         if raum and t.gruppe and t.gruppe.groesse > raum.kapazitaet:
-#             lva = self.lva_map.get(t.lva_id)
-#             msg = f"Gruppe ({t.gruppe.groesse} Personen) zu groß für {raum.name} (Kapazität: {raum.kapazitaet})"
-#             warnings.append(ConflictIssue(
-#                 severity="warning",
-#                 category="Kapazität",
-#                 termin_ids=[t.id],
-#                 message=msg,
-#                 datum=t.datum,
-#                 zeit_von=t.start_zeit,
-#                 zeit_bis=t.get_end_time(),
-#                 raum=raum.name,
-#                 lva=lva.name if lva else t.lva_id,
-#                 gruppe=t.gruppe.name
-#             ))
-#     return warnings
-#
-# def detect_duration_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-#     """Detect unusually long or short appointments."""
-#     warnings = []
-#     for t in termine:
-#         if not self.is_assigned(t) or t.duration <= 0:
-#             continue
-#         if t.duration < 30:  # Less than 30 minutes
-#             msg = f"Sehr kurze Dauer: nur {t.duration} Minuten"
-#         elif t.duration > 240:  # More than 4 hours
-#             msg = f"Sehr lange Dauer: {t.duration} Minuten ({t.duration // 60}h {t.duration % 60}min)"
-#         else:
-#             continue
-#         
-#         lva = self.lva_map.get(t.lva_id)
-#         raum = self.raum_map.get(t.raum_id)
-#         warnings.append(ConflictIssue(
-#             severity="warning",
-#             category="Dauer",
-#             termin_ids=[t.id],
-#             message=msg,
-#             datum=t.datum,
-#             zeit_von=t.start_zeit,
-#             zeit_bis=t.get_end_time(),
-#             raum=raum.name if raum else "",
-#             lva=lva.name if lva else t.lva_id,
-#             gruppe=t.gruppe.name if t.gruppe else ""
-#         ))
-#     return warnings
-#
-# def detect_weekend_warnings(self, termine: List[Termin]) -> List[ConflictIssue]:
-#     """Detect appointments scheduled on weekends."""
-#     warnings = []
-#     for t in termine:
-#         if not self.is_assigned(t):
-#             continue
-#         if t.datum.weekday() >= 5:  # Saturday=5, Sunday=6
-#             lva = self.lva_map.get(t.lva_id)
-#             raum = self.raum_map.get(t.raum_id)
-#             day_name = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"][t.datum.weekday()]
-#             warnings.append(ConflictIssue(
-#                 severity="warning",
-#                 category="Wochenende",
-#                 termin_ids=[t.id],
-#                 message=f"Termin am {day_name}",
-#                 datum=t.datum,
-#                 zeit_von=t.start_zeit,
-#                 zeit_bis=t.get_end_time(),
-#                 raum=raum.name if raum else "",
-#                 lva=lva.name if lva else t.lva_id,
-#                 gruppe=t.gruppe.name if t.gruppe else ""
-#             ))
-#     return warnings
-# ============================================================================
+# Separate capacity warning for Vorlesung
+    def detect_capacity_warning_vorlesung(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
+        warnings = []
+        percent = settings.get('min_capacity_percent', 60) if settings else 60
+        event_type = settings.get('event_type', 'vorlesung') if settings else 'vorlesung'
+        for t in termine:
+            if not self.is_assigned(t):
+                continue
+            raum = getattr(t, 'raum', None) or next((r for r in self.raeume if r.id == t.raum_id), None)
+            gruppe = getattr(t, 'gruppe', None)
+            lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+            typ = getattr(t, 'typ', None) or (lva.typ if lva and hasattr(lva, 'typ') else None)
+            if raum and gruppe and (typ == event_type):
+                required = int(gruppe.groesse * percent / 100)
+                if raum.kapazitaet < required:
+                    msg = f"Vorlesung: Gruppe ({gruppe.groesse} Personen) benötigt {percent}% Platz: {required}, Raumkapazität: {raum.kapazitaet}"
+                    if settings and settings.get('description'):
+                        msg += f" ({settings['description']})"
+                    warnings.append(ConflictIssue(
+                        severity="warning",
+                        category="Kapazität Vorlesung",
+                        termin_ids=[t.id],
+                        message=msg,
+                        datum=t.datum,
+                        zeit_von=t.start_zeit,
+                        zeit_bis=t.get_end_time(),
+                        raum=raum.name,
+                        lva=lva.name if lva else t.lva_id,
+                        gruppe=gruppe.name
+                    ))
+        return warnings
