@@ -18,9 +18,70 @@ from src.ui.dialogs.konflikte_dialog import KonflikteDialog
 import os
 
 class MainWindow(QMainWindow):
+    def set_start_semester_and_reload(self, fachrichtung, semester):
+        # Update settings.json with new start_fachrichtung and start_semester
+        s = self.ds.load_settings()
+        s["start_fachrichtung"] = fachrichtung
+        s["start_semester"] = semester
+        self.ds.save_settings(s)
+
+        # Update window title after changing semester/fachrichtung
+        settings = self.ds.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "")
+        semester = settings.get("start_semester", "")
+        title = "Planungstool"
+        if fachrichtung or semester:
+            title += f" – {fachrichtung} {semester}"
+        self.setWindowTitle(title)
+        self.refresh_everything()
+
+        # After reload, jump to the semester start date from termine.json, but delay until UI is updated
+        from PySide6.QtCore import QTimer
+        def set_semester_start_date():
+            settings = self.ds.load_settings()
+            fachrichtung = settings.get("start_fachrichtung", "ETIT")
+            semester = settings.get("start_semester", "SS26")
+            filebase = f"{semester.lower()}_termine.json"
+            path = self.data_dir / "Studiengang" / fachrichtung / filebase
+            import json
+            from datetime import datetime
+            from src.ui.utils.datetime_utils import date_to_qdate
+            try:
+                with open(path, encoding="utf-8") as f:
+                    data = json.load(f)
+                # Try to get semester start from object, else use earliest termin
+                sem_obj = data.get("semester", {})
+                start_str = sem_obj.get("start")
+                start_date = None
+                if start_str:
+                    start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
+                else:
+                    # fallback: use earliest termin date
+                    termine = data.get("termine", [])
+                    dates = [datetime.strptime(t["datum"], "%Y-%m-%d").date() for t in termine if t.get("datum")]
+                    if dates:
+                        start_date = min(dates)
+                if start_date:
+                    self.global_filter_dock.view_cb.setCurrentIndex(self.global_filter_dock.view_cb.findData("week"))
+                    self.global_filter_dock.week_from.setDate(date_to_qdate(self.planner._align_to_monday(start_date)))
+                    self.global_filter_dock.day_date.setDate(date_to_qdate(start_date))
+                    self.planner.view_cb.setCurrentIndex(self.planner.view_cb.findData("week"))
+                    self.planner.week_from.setDate(date_to_qdate(self.planner._align_to_monday(start_date)))
+                    self.planner.day_date.setDate(date_to_qdate(start_date))
+            except Exception as e:
+                print(f"Semester date switch error: {e}")
+        QTimer.singleShot(0, set_semester_start_date)
+
     def __init__(self, data_dir: Path):
         super().__init__()
-        self.setWindowTitle("Planungstool")
+        self.ds = DataService(data_dir)
+        settings = self.ds.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "")
+        semester = settings.get("start_semester", "")
+        title = "Planungstool"
+        if fachrichtung or semester:
+            title += f" – {fachrichtung} {semester}"
+        self.setWindowTitle(title)
         self.data_dir = data_dir
         self.ds = DataService(data_dir)
         
@@ -73,11 +134,32 @@ class MainWindow(QMainWindow):
     def _build_menus(self) -> None:
         mb = self.menuBar()
 
+
         #Datei Menu
         file_menu = mb.addMenu("Datei")
         self.act_refresh = QAction("Aktualisieren", self)
         self.act_refresh.triggered.connect(self.refresh_everything)
         file_menu.addAction(self.act_refresh)
+
+        # Dynamically build Semester -> Fachrichtung -> Semester submenu
+        import os
+        data_dir = os.path.join(os.getcwd(), "data", "Studiengang")
+        semester_menu = file_menu.addMenu("Semester")
+        # List all Fachrichtungen (subfolders in data/Studiengang/)
+        for fachrichtung in os.listdir(data_dir):
+            fachrichtung_path = os.path.join(data_dir, fachrichtung)
+            if os.path.isdir(fachrichtung_path):
+                fach_menu = semester_menu.addMenu(fachrichtung)
+                # List all *_termine.json files in data/Studiengang/Fachrichtung/
+                for fname in os.listdir(fachrichtung_path):
+                    if fname.endswith("_termine.json"):
+                        # Extract semester from filename (e.g. ss26_termine.json -> SS26)
+                        semester = fname.split("_")[0].upper()
+                        sem_action = QAction(semester, self)
+                        def make_switcher(fachrichtung, semester):
+                            return lambda checked=False, f=fachrichtung, s=semester: self.set_start_semester_and_reload(f, s)
+                        sem_action.triggered.connect(make_switcher(fachrichtung, semester))
+                        fach_menu.addAction(sem_action)
 
         #Ansicht Menu
         self.view_menu = mb.addMenu("Ansicht")
@@ -197,10 +279,8 @@ class MainWindow(QMainWindow):
     def refresh_conflicts(self) -> None:
         self.conflicts_dock.initialize_detector(
             self.planner.state.lvas,
-            self.planner.state.raeume,
-            self.planner.state.semester
+            self.planner.state.raeume
         )
-        
         self.conflicts_dock.refresh_conflicts(self.planner.state.termine)
 
         
@@ -212,7 +292,7 @@ class MainWindow(QMainWindow):
         lva_list = getattr(self.planner.state, "lvas", None) or []
         typ_list = [t.typ for t in getattr(self.planner.state, "termine", []) if getattr(t, "typ", None)]
         self.global_filter_dock.refresh_filter_options(
-            self.planner.state.semester,
+            [],  # no semester list anymore
             lva_list,
             self.planner.state.raeume,
             typ_list=typ_list,

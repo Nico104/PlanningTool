@@ -99,7 +99,7 @@ class DataEditorDock(QDockWidget):
     def refresh_all(self) -> None:
         self._refresh_lvas()
         self._refresh_rooms()
-        self._refresh_semester()
+        # self._refresh_semester()  # removed, no global semester info anymore
         self._refresh_freie_tage()
         self._refresh_termine()
 
@@ -123,10 +123,9 @@ class DataEditorDock(QDockWidget):
         rows = [[r.id, r.name, str(r.kapazitaet)] for r in rooms]
         self._fill_table(self.tab_rooms.table, rows)
 
-    def _refresh_semester(self) -> None:
-        sems: List[Semester] = self.ds.load_semester()
-        rows = [[s.id, s.name, fmt_date(s.start), fmt_date(s.end)] for s in sems]
-        self._fill_table(self.tab_sem.table, rows)
+    # def _refresh_semester(self) -> None:
+    #     # No global semester info anymore
+    #     pass
 
     def _refresh_freie_tage(self) -> None:
         freie = self._crud.read_freie_tage()

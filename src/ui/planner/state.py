@@ -12,7 +12,6 @@ from ...services.termin_service import TerminService
 class PlannerState:
     ds: DataService
 
-    semester: List[Semester] = field(default_factory=list)
     raeume: List[Raum] = field(default_factory=list)
     lvas: List[Lehrveranstaltung] = field(default_factory=list)
     termine: List[Termin] = field(default_factory=list)
@@ -21,7 +20,6 @@ class PlannerState:
     ts: Optional[TerminService] = None
 
     def reload(self) -> None:
-        self.semester = self.ds.load_semester()
         self.raeume = self.ds.load_raeume()
         self.lvas = self.ds.load_lvas()
         self.termine = self.ds.load_termine()

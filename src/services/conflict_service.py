@@ -35,11 +35,9 @@ class ConflictDetector:
     def __init__(self, 
                  lvas: List[Lehrveranstaltung],
                  raeume: List[Raum],
-                 semester_list: List[Semester],
                  conflict_settings_path: str = None):
         self.lvas = lvas
         self.raeume = raeume
-        self.semester_list = semester_list
         # Load conflict settings (konflikte.json)
         self.conflict_settings = {}
         settings = load_conflicts(conflict_settings_path)
@@ -74,11 +72,12 @@ class ConflictDetector:
         # startA < endB AND startB < endA
         return (t1.start_zeit < end2) and (t2.start_zeit < end1)
     
-    def get_planning_period(self, semester_id: str) -> Optional[Tuple[date, date]]:
-        """Get planning start/end dates for a semester."""
-        for sem in self.semester_list:
-            if sem.id == semester_id:
-                return (sem.start, sem.end)
+    def get_planning_period(self, termine: List[Termin], semester_id: str) -> Optional[Tuple[date, date]]:
+        """Get planning start/end dates for a semester from termine list."""
+        for t in termine:
+            if getattr(t, "semester_id", None) == semester_id:
+                # Assume all termine for a semester have the same start/end
+                return (getattr(t, "start", None), getattr(t, "end", None))
         return None
     
     def detect_all(self, termine: List[Termin]) -> List[ConflictIssue]:
@@ -241,10 +240,12 @@ class ConflictDetector:
         for t in termine:
             if not t.datum or not t.semester_id:
                 continue
-            period = self.get_planning_period(t.semester_id)
+            period = self.get_planning_period(termine, t.semester_id)
             if not period:
                 continue
             start, end = period
+            if start is None or end is None:
+                continue
             if t.datum < start or t.datum > end:
                 lva = next((l for l in self.lvas if l.id == t.lva_id), None)
                 raum = next((r for r in self.raeume if r.id == t.raum_id), None)

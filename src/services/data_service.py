@@ -13,8 +13,18 @@ class DataService:
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
 
-    def _read(self, filename: str) -> Dict[str, Any]:
-        path = self.data_dir / filename
+
+    def _read(self, filename: str, fachrichtung: str = None, semester: str = None) -> Dict[str, Any]:
+        # Support new structure: Studiengang/ETIT/ss26_termine.json etc.
+        if fachrichtung and semester:
+            # Compose filename like 'ss26_termine.json' or 'ws26_termine.json'
+            if filename == "termine.json":
+                filebase = f"{semester.lower()}_termine.json"
+                path = self.data_dir / "Studiengang" / fachrichtung / filebase
+            else:
+                path = self.data_dir / fachrichtung / semester / filename
+        else:
+            path = self.data_dir / filename
         return json.loads(path.read_text(encoding="utf-8"))
 
     def _write(self, filename: str, obj: Dict[str, Any]) -> None:
@@ -38,21 +48,16 @@ class DataService:
         return t.strftime("%H:%M")
 
     # ---------- LOAD ----------
-    def load_semester(self) -> List[Semester]:
-        raw = self._read("semester.json")["semester"]
-        return [Semester(
-            id=x["id"],
-            name=x["name"],
-            start=self._parse_date(x["start"]),
-            end=self._parse_date(x["end"]),
-        ) for x in raw]
 
     def load_raeume(self) -> List[Raum]:
         raw = self._read("raeume.json")["raeume"]
         return [Raum(id=x["id"], name=x["name"], kapazitaet=int(x["kapazitaet"])) for x in raw]
 
     def load_lvas(self) -> List[Lehrveranstaltung]:
-        raw = self._read("lehrveranstaltungen.json")["lehrveranstaltungen"]
+        settings = self.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "ETIT")
+        path = self.data_dir / "Studiengang" / fachrichtung / "lehrveranstaltungen.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))["lehrveranstaltungen"]
         out: List[Lehrveranstaltung] = []
         for x in raw:
             v = x["vortragende"]
@@ -64,23 +69,32 @@ class DataService:
             ))
         return out
 
-    def load_termine(self) -> List[Termin]:
-        raw = self._read("termine.json")["termine"]
-        out: List[Termin] = []
 
+    def load_termine(self) -> List[Termin]:
+        settings = self.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "ETIT")
+        semester = settings.get("start_semester", "SS26")
+        # Try new structure: Studiengang/ETIT/ss26_termine.json
+        possible_semesters = [semester, semester.upper(), semester.lower()]
+        raw = None
+        for sem in possible_semesters:
+            try:
+                raw = self._read("termine.json", fachrichtung=fachrichtung, semester=sem)["termine"]
+                break
+            except FileNotFoundError:
+                continue
+        if raw is None:
+            return []
+        out: List[Termin] = []
         for x in raw:
             # optional fields
             g = x.get("gruppe")
-
-
             # datum optional
             d_raw = x.get("datum")
             datum = self._parse_date(d_raw) if d_raw else None
-
             # start_zeit optional
             start_zeit_raw = x.get("start_zeit")
             start_zeit = self._parse_time(start_zeit_raw) if start_zeit_raw else None
-
             out.append(Termin(
                 id=x["id"],
                 lva_id=x["lva_id"],
@@ -101,7 +115,6 @@ class DataService:
                 notiz=x.get("notiz", ""),
                 duration=int(x.get("duration", 0)),
             ))
-
         return out
 
 
@@ -124,17 +137,25 @@ class DataService:
         })
 
     def save_lvas(self, lvas: List[Lehrveranstaltung]) -> None:
-        self._write("lehrveranstaltungen.json", {
+        settings = self.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "ETIT")
+        path = self.data_dir / "Studiengang" / fachrichtung / "lehrveranstaltungen.json"
+        path.write_text(json.dumps({
             "lehrveranstaltungen": [{
                 "id": l.id,
                 "name": l.name,
                 "vortragende": {"name": l.vortragende.name, "email": l.vortragende.email},
                 "typ": list(l.typ)
             } for l in lvas]
-        })
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def save_termine(self, termine: List[Termin]) -> None:
-        self._write("termine.json", {
+        settings = self.load_settings()
+        fachrichtung = settings.get("start_fachrichtung", "ETIT")
+        semester = settings.get("start_semester", "SS26")
+        filebase = f"{semester.lower()}_termine.json"
+        path = self.data_dir / "Studiengang" / fachrichtung / filebase
+        path.write_text(json.dumps({
             "termine": [{
                 "id": t.id,
                 "lva_id": t.lva_id,
@@ -155,7 +176,7 @@ class DataService:
                 "notiz": t.notiz,
                 "duration": t.duration,
             } for t in termine]
-        })
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def save_settings(self, settings: Dict[str, Any]) -> None:
         # minimal guard

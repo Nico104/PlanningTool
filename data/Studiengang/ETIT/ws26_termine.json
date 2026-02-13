@@ -1,0 +1,68 @@
+{
+  "termine": [
+    {
+      "id": "T1",
+      "lva_id": "LVA1",
+      "semester_id": "WS26",
+      "typ": "VO",
+      "datum": "2026-09-30",
+      "start_zeit": "11:15",
+      "raum_id": "R101",
+      "gruppe": {
+        "name": "Gruppe A",
+        "groesse": 30
+      },
+      "anwesenheitspflicht": true,
+      "notiz": "Einführung in das Fach",
+      "duration": 90
+    },
+    {
+      "id": "T2",
+      "lva_id": "LVA2",
+      "semester_id": "WS26",
+      "typ": "UE",
+      "datum": "2026-09-30",
+      "start_zeit": "12:05",
+      "raum_id": "R102",
+      "gruppe": {
+        "name": "Gruppe B",
+        "groesse": 25
+      },
+      "anwesenheitspflicht": false,
+      "notiz": "Praktische Übung",
+      "duration": 60
+    },
+    {
+      "id": "T3",
+      "lva_id": "LVA3",
+      "semester_id": "WS26",
+      "typ": "SE",
+      "datum": "2026-09-30",
+      "start_zeit": "11:15",
+      "raum_id": "R103",
+      "gruppe": {
+        "name": "Gruppe C",
+        "groesse": 20
+      },
+      "anwesenheitspflicht": true,
+      "notiz": "Seminararbeit",
+      "duration": 120
+    },
+    {
+      "id": "T4",
+      "lva_id": "LVA4",
+      "semester_id": "WS26",
+      "typ": "LU",
+      "datum": "2026-09-30",
+      "start_zeit": "12:30",
+      "raum_id": "R104",
+      "gruppe": {
+        "name": "Gruppe D",
+        "groesse": 15
+      },
+      "anwesenheitspflicht": false,
+      "notiz": "Laborübung",
+      "duration": 180
+    }
+  ]
+}

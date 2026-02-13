@@ -1,41 +1,9 @@
 {
   "termine": [
     {
-      "id": "T001",
-      "lva_id": "123.456",
-      "semester_id": "SS2026",
-      "typ": "VO",
-      "datum": "2026-03-10",
-      "start_zeit": "12:05",
-      "raum_id": "E17",
-      "gruppe": {
-        "name": "Gruppe A",
-        "groesse": 30
-      },
-      "anwesenheitspflicht": true,
-      "notiz": "Erste Vorlesung Psychologie",
-      "duration": 90
-    },
-    {
-      "id": "T004",
-      "lva_id": "370.007",
-      "semester_id": "SS2026",
-      "typ": "VO",
-      "datum": "2026-03-12",
-      "start_zeit": "10:00",
-      "raum_id": "E17",
-      "gruppe": {
-        "name": "Gruppe D",
-        "groesse": 40
-      },
-      "anwesenheitspflicht": true,
-      "notiz": "Konflikt: Raum E17 doppelt belegt",
-      "duration": 60
-    },
-    {
       "id": "T005",
       "lva_id": "123.456",
-      "semester_id": "SS2026",
+      "semester_id": "SS26",
       "typ": "VO",
       "datum": "2026-03-10",
       "start_zeit": "12:30",
@@ -51,10 +19,10 @@
     {
       "id": "T006",
       "lva_id": "410.101",
-      "semester_id": "WS2026",
+      "semester_id": "SS26",
       "typ": "LU",
-      "datum": "2026-03-12",
-      "start_zeit": "10:25",
+      "datum": "2026-03-11",
+      "start_zeit": "12:30",
       "raum_id": "LAB3",
       "gruppe": {
         "name": "Gruppe F",
@@ -67,7 +35,7 @@
     {
       "id": "T002",
       "lva_id": "370.007",
-      "semester_id": "SS2026",
+      "semester_id": "SS26",
       "typ": "UE",
       "datum": "2026-03-12",
       "start_zeit": "10:50",
@@ -83,7 +51,7 @@
     {
       "id": "T003",
       "lva_id": "410.101",
-      "semester_id": "WS2026",
+      "semester_id": "SS26",
       "typ": "LU",
       "datum": "2026-03-10",
       "start_zeit": "11:15",

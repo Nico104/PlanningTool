@@ -29,10 +29,10 @@ class GlobalFilterDock(QDockWidget):
         headerBar.setContentsMargins(6, 6, 6, 6)
         headerBar.setSpacing(8)
 
-        self.sem_cb = TightComboBox()
-        self.sem_cb.setToolTip("Semester filter")
-        self.sem_cb.setMinimumWidth(200)
-        headerBar.addWidget(self.sem_cb)
+        # self.sem_cb = TightComboBox()
+        # self.sem_cb.setToolTip("Semester filter")
+        # self.sem_cb.setMinimumWidth(200)
+        # headerBar.addWidget(self.sem_cb)
 
         self.lva_cb = TightComboBox()
         self.lva_cb.setToolTip("LVA filter")
@@ -81,14 +81,14 @@ class GlobalFilterDock(QDockWidget):
         self.week_from.setDate(QDate.currentDate().addDays(-28))
         headerBar.addWidget(self.week_from)
         
-        self.sem_cb.setObjectName("HeaderCombo")
+        # self.sem_cb.setObjectName("HeaderCombo")
         self.lva_cb.setObjectName("HeaderCombo")
         self.typ_cb.setObjectName("HeaderCombo")
         self.room_cb.setObjectName("HeaderCombo")
         self.view_cb.setObjectName("HeaderCombo")
 
         # connect signals
-        self.sem_cb.currentIndexChanged.connect(self._on_change)
+        # self.sem_cb.currentIndexChanged.connect(self._on_change)
         self.lva_cb.currentIndexChanged.connect(self._on_change)
         self.typ_cb.currentIndexChanged.connect(self._on_change)
         self.room_cb.currentIndexChanged.connect(self._on_change)
@@ -102,7 +102,8 @@ class GlobalFilterDock(QDockWidget):
 
     def _on_change(self, *_) -> None:
         fs = FilterState(
-            semester_id=self.sem_cb.currentData() or None,
+            # semester_id=self.sem_cb.currentData() or None,
+            semester_id=None,
             lva_id=self.lva_cb.currentData() or None,
             raum_id=self.room_cb.currentData() or None,
             typ=self.typ_cb.currentData() or None,
@@ -113,18 +114,18 @@ class GlobalFilterDock(QDockWidget):
         self.viewChanged.emit(str(self.view_cb.currentData()))
 
     def refresh_filter_options(self, semester_list, lva_list, raum_list, typ_list=None, current: Optional[FilterState] = None) -> None:
-        cur_sem = current.semester_id if current else None
+        # cur_sem = current.semester_id if current else None
         cur_lva = current.lva_id if current else None
         cur_room = current.raum_id if current else None
         cur_typ = current.typ if current else None
 
-        self._set_combo_items(
-            self.sem_cb,
-            "Semester: alle",
-            "",
-            [(f"{s.id} – {s.name}", s.id) for s in semester_list],
-            cur_sem,
-        )
+        # self._set_combo_items(
+        #     self.sem_cb,
+        #     "Semester: alle",
+        #     "",
+        #     [(f"{s.id} – {s.name}", s.id) for s in semester_list],
+        #     cur_sem,
+        # )
         self._set_combo_items(
             self.lva_cb,
             "LVA: Alle",

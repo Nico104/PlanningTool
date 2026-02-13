@@ -62,7 +62,6 @@ class CrudHandlers:
         return True
 
     # ---------- CRUD Freie Tage
-    def read_freie_tage(self) -> List[Dict[str, Any]]:
         path = self._freie_tage_path()
         return self._read_json_list(path, "freie_tage")
 
@@ -78,15 +77,37 @@ class CrudHandlers:
 
         freie.append(dlg.result)
         self._write_freie_tage(path, freie)
+    def read_freie_tage(self, year: Optional[int] = None) -> List[Dict[str, Any]]:
+        if year is None:
+            year = date.today().year
+        path = Path(self.data_dir) / "freie_tage" / f"freie_tage_{year}.json"
+        return self._read_json_list(path, "freie_tage")
+
+    def add_freie_tage(self, year: Optional[int] = None) -> None:
+        if year is None:
+            year = date.today().year
+        path = Path(self.data_dir) / "freie_tage" / f"freie_tage_{year}.json"
+        if not path:
+            return
+
+        freie = self.read_freie_tage(year)
+        dlg = FreieTageDialog(self.parent, None)
+        if dlg.exec() != QDialog.Accepted or not dlg.result:
+            return
+
+        freie.append(dlg.result)
+        self._write_freie_tage(path, freie)
         self.planner.refresh()
 
-    def edit_freie_tage(self) -> None:
-        path = self._freie_tage_path()
+    def edit_freie_tage(self, year: Optional[int] = None) -> None:
+        if year is None:
+            year = date.today().year
+        path = Path(self.data_dir) / "freie_tage" / f"freie_tage_{year}.json"
         row = self._freie_tage_row()
         if not path or row is None or row < 0:
             return
 
-        freie = self.read_freie_tage()
+        freie = self.read_freie_tage(year)
         if row >= len(freie):
             return
 
@@ -99,8 +120,10 @@ class CrudHandlers:
         self._write_freie_tage(path, freie)
         self.planner.refresh()
 
-    def del_freie_tage(self) -> None:
-        path = self._freie_tage_path()
+    def del_freie_tage(self, year: Optional[int] = None) -> None:
+        if year is None:
+            year = date.today().year
+        path = Path(self.data_dir) / "freie_tage" / f"freie_tage_{year}.json"
         row = self._freie_tage_row()
         if not path or row is None or row < 0:
             return
@@ -108,7 +131,7 @@ class CrudHandlers:
         if QMessageBox.question(self.parent, "Löschen", "Eintrag wirklich löschen?") != QMessageBox.Yes:
             return
 
-        freie = self.read_freie_tage()
+        freie = self.read_freie_tage(year)
         if row >= len(freie):
             return
 
@@ -239,8 +262,10 @@ class CrudHandlers:
             return it.text().strip() if it else None
         return None
 
-    def _freie_tage_path(self) -> Optional[Path]:
-        return (self.data_dir / "freie_tage.json") if self.data_dir else None
+    def _freie_tage_path(self, year: Optional[int] = None) -> Optional[Path]:
+        if year is None:
+            year = date.today().year
+        return Path(self.data_dir) / "freie_tage" / f"freie_tage_{year}.json"
 
     def _freie_tage_row(self) -> Optional[int]:
         if not self.freie_tage_dock:

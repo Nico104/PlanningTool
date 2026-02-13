@@ -166,19 +166,23 @@ class PlannerWorkspace(QWidget):
         self.state.reload()
         # self._rebuild_filter_boxes()
 
-        sem, room, q, typ = self.current_filters()
-        filtered = self.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
+        # Only filter by room, q, typ, NOT by semester_id (since file switch = semester switch)
+        _sem, room, q, typ = self.current_filters()
+        filtered = self.state.termine
+        if room:
+            filtered = [t for t in filtered if t.raum_id == room]
+        if q:
+            filtered = [t for t in filtered if q in (t.lva_id or '').lower()]
         if typ:
             filtered = [t for t in filtered if getattr(t, "typ", None) == typ]
 
         view = str(self.view_cb.currentData())
         if view == "day":
             self.stack.setCurrentWidget(self.day_table)
-            sem, room, q, typ = self.current_filters()
             rooms = self.state.raeume
             if room:
                 rooms = [r for r in rooms if r.id == room]
-            self.day_view.refresh(filtered, rooms, sem, room)
+            self.day_view.refresh(filtered, rooms, None, room)
         else:
             self.stack.setCurrentWidget(self.week_table)
             self.week_view.refresh(filtered)
