@@ -26,12 +26,14 @@ class PlannerState:
         self.settings = self.ds.load_settings()
         self.ts = TerminService(self.settings)
 
-    def filtered_termine(self, semester_id: Optional[str], raum_id: Optional[str], q: str) -> List[Termin]:
-        out = filter_termine(self.termine, semester_id=semester_id, raum_id=raum_id)
+    def filtered_termine(self, raum_id: Optional[str], q: str, typ: Optional[str] = None, dozent: Optional[str] = None) -> List[Termin]:
+        # baue lva_dict für schnellen Zugriff
+        lva_dict = {lva.id: lva for lva in self.lvas}
+        out = filter_termine(self.termine, raum_id=raum_id, typ=typ, dozent=dozent, lva_dict=lva_dict)
         q = (q or "").strip().lower()
         if q:
             def match(t: Termin) -> bool:
-                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
+                lva = lva_dict.get(t.lva_id)
                 hay = " ".join([
                     t.lva_id,
                     lva.name if lva else "",

@@ -9,7 +9,6 @@ from PySide6.QtWidgets import QListView
 
 
 class _TightDelegate(QStyledItemDelegate):
-    """Slightly tighter row height + clean spacing in popup."""
     def sizeHint(self, option, index):
         sz = super().sizeHint(option, index)
         # tighten vertical space a bit
@@ -18,13 +17,16 @@ class _TightDelegate(QStyledItemDelegate):
 
 
 class TightComboBox(QComboBox):
-    """
-    Compact, modern-feeling combobox:
-    - fixed compact height
-    - no mouse-wheel accidental changes
-    - frameless popup (no ugly second window shadow)
-    - popup width fits longest item
-    """
+    def keyPressEvent(self, event):
+        key = event.text()
+        if key and len(key) == 1 and key.isprintable():
+            key_lower = key.lower()
+            for i in range(self.count()):
+                item_text = self.itemText(i)
+                if item_text.lower().startswith(key_lower):
+                    self.setCurrentIndex(i)
+                    return
+        super().keyPressEvent(event)
 
     def __init__(self, parent=None, *, compact_height: int = 32, min_popup_width: int = 180):
         super().__init__(parent)

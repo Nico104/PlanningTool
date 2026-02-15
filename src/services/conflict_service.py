@@ -72,12 +72,11 @@ class ConflictDetector:
         # startA < endB AND startB < endA
         return (t1.start_zeit < end2) and (t2.start_zeit < end1)
     
-    def get_planning_period(self, termine: List[Termin], semester_id: str) -> Optional[Tuple[date, date]]:
-        """Get planning start/end dates for a semester from termine list."""
+    def get_planning_period(self, termine: List[Termin]) -> Optional[Tuple[date, date]]:
+        """Get planning start/end dates from the first available Termin (legacy: was per semester)."""
         for t in termine:
-            if getattr(t, "semester_id", None) == semester_id:
-                # Assume all termine for a semester have the same start/end
-                return (getattr(t, "start", None), getattr(t, "end", None))
+            # Assume all termine have the same start/end
+            return (getattr(t, "start", None), getattr(t, "end", None))
         return None
     
     def detect_all(self, termine: List[Termin]) -> List[ConflictIssue]:
@@ -238,9 +237,9 @@ class ConflictDetector:
         """Detect warnings for dates outside the planning period. Uses settings if provided."""
         warnings = []
         for t in termine:
-            if not t.datum or not t.semester_id:
+            if not t.datum:
                 continue
-            period = self.get_planning_period(termine, t.semester_id)
+            period = self.get_planning_period(termine)
             if not period:
                 continue
             start, end = period

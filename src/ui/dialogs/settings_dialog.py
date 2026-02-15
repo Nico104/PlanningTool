@@ -44,10 +44,14 @@ class SettingsDialog(QDialog):
         self.day_end_te = QTimeEdit()
         self.day_end_te.setObjectName("Field")
 
+        from PySide6.QtWidgets import QLineEdit
+        self.data_path_le = QLineEdit()
+        self.data_path_le.setObjectName("Field")
         form.addRow("Zeit-Raster (Minuten):", self.slot_sb)
         form.addRow("Dauer-Schritte (Minuten):", self.duration_step_sb)
         form.addRow("Tag Start:", self.day_start_te)
         form.addRow("Tag Ende:", self.day_end_te)
+        form.addRow("Datenpfad:", self.data_path_le)
 
         btns = QHBoxLayout()
         lay.addLayout(btns)
@@ -73,6 +77,7 @@ class SettingsDialog(QDialog):
         de = datetime.strptime(s.get("day_end", "18:00"), "%H:%M").time()
         self.day_start_te.setTime(QTime(ds.hour, ds.minute))
         self.day_end_te.setTime(QTime(de.hour, de.minute))
+        self.data_path_le.setText(s.get("data_path", ""))
 
     def _on_ok(self) -> None:
         self.result_settings = {
@@ -80,5 +85,6 @@ class SettingsDialog(QDialog):
             "duration_step_minutes": int(self.duration_step_sb.value()),
             "day_start": self.day_start_te.time().toString("HH:mm"),
             "day_end": self.day_end_te.time().toString("HH:mm"),
+            "data_path": self.data_path_le.text(),
         }
         self.accept()

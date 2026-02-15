@@ -1,7 +1,7 @@
 from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QActionGroup
-from PySide6.QtWidgets import QDialog, QMainWindow, QMessageBox
+from PySide6.QtWidgets import QDialog, QMainWindow
 
 from src.services.data_service import DataService
 
@@ -120,6 +120,7 @@ class MainWindow(QMainWindow):
 
     def open_settings(self) -> None:
         cur = self.ds.load_settings()
+        old_data_path = cur.get("data_path", "")
         dlg = SettingsDialog(self, cur)
         if dlg.exec() != QDialog.Accepted or not dlg.result_settings:
             return
@@ -128,7 +129,25 @@ class MainWindow(QMainWindow):
         s.update(dlg.result_settings)
         self.ds.save_settings(s)
 
-        QMessageBox.information(self, "Settings", "Gespeichert.")
+        new_data_path = s.get("data_path", "")
+        import sys, subprocess
+        from PySide6.QtWidgets import QMessageBox, QPushButton
+        if new_data_path != old_data_path:
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Gespeichert")
+            msg.setText("Gespeichert. Für manche Einstellungen muss das Programm neu gestartet werden.")
+            restart_btn = QPushButton("Neustart")
+            ok_btn = msg.addButton(QMessageBox.Ok)
+            msg.addButton(restart_btn, QMessageBox.AcceptRole)
+            msg.setDefaultButton(ok_btn)
+            msg.exec()
+            if msg.clickedButton() == restart_btn:
+                python = sys.executable
+                subprocess.Popen([python] + sys.argv)
+                sys.exit(0)
+        else:
+            QMessageBox.information(self, "Gespeichert", "Gespeichert.")
         self.refresh_everything()
 
     def _build_menus(self) -> None:
@@ -198,23 +217,29 @@ class MainWindow(QMainWindow):
 
         self.planner = PlannerWorkspace(self, self.ds, on_data_changed=self.refresh_docks, global_filter_dock=self.global_filter_dock)
         self.setCentralWidget(self.planner)
-        self.centralWidget().setMinimumWidth(self.width() * 0.75)
+      
 
         self.termine_dock = TermineDock(self)
         self.termine_dock.setObjectName("dock_termine")
         self.addDockWidget(Qt.LeftDockWidgetArea, self.termine_dock)
-        self.termine_dock.setMinimumWidth(self.width() * 0.35)
-        self.resizeDocks([self.termine_dock], [self.width() * 0.75], Qt.Horizontal)
-
+        # Data Editor dock
         self.data_editor_dock = DataEditorDock(self, ds=self.ds, data_dir=self.data_dir, on_data_changed=self.refresh_docks)
         self.data_editor_dock.setObjectName("dock_data_editor")
-
         self.tabifyDockWidget(self.termine_dock, self.data_editor_dock)
         self.termine_dock.raise_()
-
+        # Conflicts dock
         self.conflicts_dock = ConflictsDock(self)
         self.conflicts_dock.setObjectName("dock_conflicts")
         self.addDockWidget(Qt.RightDockWidgetArea, self.conflicts_dock)
+
+        total_width = self.width()
+        left = int(total_width * 0.80)   # 28% for Termine/DataEditor
+        right = int(total_width * 0.18)  # 18% for ConflictsDock
+        # self.centralWidget().setMinimumWidth(self.width() * 0.50)
+        self.resizeDocks([
+            self.termine_dock,
+            self.conflicts_dock
+        ], [left, right], Qt.Horizontal)
 
     def _wire_signals(self) -> None:
         # Termine
@@ -309,15 +334,14 @@ class MainWindow(QMainWindow):
 
     def _compute_filtered_termine(self, fs: FilterState | None):
         if fs:
-            sem = fs.semester_id
             room = fs.raum_id
             q = (str(fs.lva_id).strip().lower() if fs.lva_id else "")
             typ = fs.typ
+            dozent = fs.dozent
         else:
-            sem, room, q, typ = self.planner.current_filters()
+            room, q, typ = self.planner.current_filters()
+            dozent = None
 
-        terms = self.planner.state.filtered_termine(semester_id=sem, raum_id=room, q=q)
-        if typ:
-            terms = [t for t in terms if getattr(t, "typ", None) == typ]
+        terms = self.planner.state.filtered_termine(raum_id=room, q=q, typ=typ, dozent=dozent)
         return terms
 

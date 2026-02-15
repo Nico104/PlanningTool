@@ -155,19 +155,19 @@ class PlannerWorkspace(QWidget):
     #     # it to ensure state is loaded.
     #     return
 
-    def current_filters(self) -> Tuple[Optional[str], Optional[str], str, Optional[str]]:
+    def current_filters(self) -> Tuple[Optional[str], str, Optional[str]]:
         gf = getattr(self, "_global_filter", None)
         if gf is None:
-            return None, None, "", None
-        return gf.semester_id, gf.raum_id, (str(gf.lva_id).strip().lower() if gf.lva_id else ""), gf.typ
+            return None, "", None
+        return gf.raum_id, (str(gf.lva_id).strip().lower() if gf.lva_id else ""), gf.typ
 
     def refresh(self, emit: bool = True):
         # Reload EVERYTHING every refresh so UI always matches saved JSON state
         self.state.reload()
         # self._rebuild_filter_boxes()
 
-        # Only filter by room, q, typ, NOT by semester_id (since file switch = semester switch)
-        _sem, room, q, typ = self.current_filters()
+        # Only filter by room, q, typ (kein semester_id mehr)
+        room, q, typ = self.current_filters()
         filtered = self.state.termine
         if room:
             filtered = [t for t in filtered if t.raum_id == room]

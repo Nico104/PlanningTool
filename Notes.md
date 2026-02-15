@@ -33,3 +33,12 @@ populate freie tage
 freie tage im calendar
 
 Export, Import
+
+Konflikte Überscheidung
+
+
+Bug: Someime a Day eats the dates after time slot change
+
+qss spinbuttons
+
+Custom Data Path, Serverfolder

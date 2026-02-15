@@ -45,10 +45,16 @@ class CrudHandlers:
         if not cur:
             return False
 
+        sems = []
+        if hasattr(self.ds, "load_semester"):
+            try:
+                sems = self.ds.load_semester() or []
+            except Exception:
+                sems = []
         dlg = TerminDialog(
             self.parent,
             lvas=self.ds.load_lvas(),
-            semester=self.ds.load_semester(),
+            semester=sems,
             raeume=self.ds.load_raeume(),
             termin=cur,
             settings=self.ds.load_settings(),

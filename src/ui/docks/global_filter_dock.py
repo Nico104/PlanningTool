@@ -34,10 +34,16 @@ class GlobalFilterDock(QDockWidget):
         # self.sem_cb.setMinimumWidth(200)
         # headerBar.addWidget(self.sem_cb)
 
+
         self.lva_cb = TightComboBox()
         self.lva_cb.setToolTip("LVA filter")
         self.lva_cb.setMinimumWidth(220)
         headerBar.addWidget(self.lva_cb)
+
+        self.dozent_cb = TightComboBox()
+        self.dozent_cb.setToolTip("Dozent filter")
+        self.dozent_cb.setMinimumWidth(180)
+        headerBar.addWidget(self.dozent_cb)
 
         self.typ_cb = TightComboBox()
         self.typ_cb.setToolTip("Typ filter")
@@ -82,7 +88,9 @@ class GlobalFilterDock(QDockWidget):
         headerBar.addWidget(self.week_from)
         
         # self.sem_cb.setObjectName("HeaderCombo")
+
         self.lva_cb.setObjectName("HeaderCombo")
+        self.dozent_cb.setObjectName("HeaderCombo")
         self.typ_cb.setObjectName("HeaderCombo")
         self.room_cb.setObjectName("HeaderCombo")
         self.view_cb.setObjectName("HeaderCombo")
@@ -90,6 +98,7 @@ class GlobalFilterDock(QDockWidget):
         # connect signals
         # self.sem_cb.currentIndexChanged.connect(self._on_change)
         self.lva_cb.currentIndexChanged.connect(self._on_change)
+        self.dozent_cb.currentIndexChanged.connect(self._on_change)
         self.typ_cb.currentIndexChanged.connect(self._on_change)
         self.room_cb.currentIndexChanged.connect(self._on_change)
         self.view_cb.currentIndexChanged.connect(self._on_view_change)
@@ -102,30 +111,22 @@ class GlobalFilterDock(QDockWidget):
 
     def _on_change(self, *_) -> None:
         fs = FilterState(
-            # semester_id=self.sem_cb.currentData() or None,
-            semester_id=None,
             lva_id=self.lva_cb.currentData() or None,
             raum_id=self.room_cb.currentData() or None,
             typ=self.typ_cb.currentData() or None,
+            dozent=self.dozent_cb.currentData() or None,
         )
         self.filtersChanged.emit(fs)
 
     def _on_view_change(self, *_) -> None:
         self.viewChanged.emit(str(self.view_cb.currentData()))
 
-    def refresh_filter_options(self, semester_list, lva_list, raum_list, typ_list=None, current: Optional[FilterState] = None) -> None:
-        # cur_sem = current.semester_id if current else None
+    def refresh_filter_options(self, semester_list, lva_list, raum_list, typ_list=None, dozent_list=None, current: Optional[FilterState] = None) -> None:
         cur_lva = current.lva_id if current else None
         cur_room = current.raum_id if current else None
         cur_typ = current.typ if current else None
+        cur_dozent = current.dozent if current else None
 
-        # self._set_combo_items(
-        #     self.sem_cb,
-        #     "Semester: alle",
-        #     "",
-        #     [(f"{s.id} – {s.name}", s.id) for s in semester_list],
-        #     cur_sem,
-        # )
         self._set_combo_items(
             self.lva_cb,
             "LVA: Alle",
@@ -142,6 +143,8 @@ class GlobalFilterDock(QDockWidget):
             [(f"{r.id} – {getattr(r, 'name', '')}", r.id) for r in raum_list],
             cur_room,
         )
+        dozent_items = [(d, d) for d in sorted({getattr(lv.vortragende, 'name', '') for lv in lva_list if hasattr(lv, 'vortragende') and getattr(lv.vortragende, 'name', '')})]
+        self._set_combo_items(self.dozent_cb, "Dozent: Alle", None, dozent_items, cur_dozent)
 
     def _set_combo_items(self, combo, label: str, default_data, items, current) -> None:
         combo.blockSignals(True)

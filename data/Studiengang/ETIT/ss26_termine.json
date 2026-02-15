@@ -2,12 +2,11 @@
   "termine": [
     {
       "id": "T1",
-      "lva_id": "LVA1",
-      "semester_id": "SS26",
+      "lva_id": "410.101",
       "typ": "VO",
-      "datum": "2026-02-24",
-      "start_zeit": "11:15",
-      "raum_id": "R101",
+      "datum": "2026-02-26",
+      "start_zeit": "13:20",
+      "raum_id": "E17",
       "gruppe": {
         "name": "Gruppe A",
         "groesse": 30
@@ -18,12 +17,11 @@
     },
     {
       "id": "T2",
-      "lva_id": "LVA2",
-      "semester_id": "SS26",
+      "lva_id": "370.007",
       "typ": "UE",
       "datum": "2026-02-24",
-      "start_zeit": "11:15",
-      "raum_id": "R102",
+      "start_zeit": "12:55",
+      "raum_id": "E17",
       "gruppe": {
         "name": "Gruppe B",
         "groesse": 25
@@ -34,12 +32,11 @@
     },
     {
       "id": "T3",
-      "lva_id": "LVA3",
-      "semester_id": "SS26",
+      "lva_id": "123.456",
       "typ": "SE",
-      "datum": "2026-02-24",
-      "start_zeit": "12:30",
-      "raum_id": "R103",
+      "datum": null,
+      "start_zeit": null,
+      "raum_id": "E17",
       "gruppe": {
         "name": "Gruppe C",
         "groesse": 20
@@ -50,12 +47,11 @@
     },
     {
       "id": "T4",
-      "lva_id": "LVA4",
-      "semester_id": "SS26",
+      "lva_id": "370.007",
       "typ": "LU",
       "datum": "2026-02-24",
       "start_zeit": "12:30",
-      "raum_id": "R104",
+      "raum_id": "E17",
       "gruppe": {
         "name": "Gruppe D",
         "groesse": 15

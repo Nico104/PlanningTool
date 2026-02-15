@@ -62,7 +62,6 @@ class Gruppe:
 class Termin:
     id: str
     lva_id: str
-    semester_id: str
     typ: str
     datum: Optional[date]
     start_zeit: Optional[time]

@@ -49,9 +49,6 @@ class TerminDialog(QDialog):
         for l in lvas:
             self.lva_cb.addItem(f"{l.id} – {l.name}", l.id)
 
-        self.sem_cb = TightComboBox()
-        for s in semester:
-            self.sem_cb.addItem(f"{s.id} – {s.name}", s.id)
 
         self.typ_le = QLineEdit(termin.typ if termin else "VO")
         
@@ -109,7 +106,6 @@ class TerminDialog(QDialog):
                 self.time_from.setTime(QTime(8, 0))
 
             self._set_cb(self.lva_cb, termin.lva_id)
-            self._set_cb(self.sem_cb, termin.semester_id)
             self._set_cb(self.raum_cb, termin.raum_id)
         else:
             # New termin: start with today
@@ -150,7 +146,6 @@ class TerminDialog(QDialog):
         _sync_time_enabled()
 
         form.addRow("LVA:", self.lva_cb)
-        form.addRow("Semester:", self.sem_cb)
         form.addRow("Typ:", self.typ_le)
         form.addRow("Datum:", self.date_de)
         form.addRow("Von:", self.time_from)
@@ -168,7 +163,6 @@ class TerminDialog(QDialog):
         
         # Removed ID object name
         self.lva_cb.setObjectName("HeaderCombo")
-        self.sem_cb.setObjectName("HeaderCombo")
         self.typ_le.setObjectName("Field")
         self.date_de.setObjectName("DateEdit")
         self.time_from.setObjectName("Field")
@@ -205,7 +199,6 @@ class TerminDialog(QDialog):
         # Removed ID field validation and assignment
 
         lva_id = str(self.lva_cb.currentData())
-        sem_id = str(self.sem_cb.currentData())
         raum_id = str(self.raum_cb.currentData())
         typ = self.typ_le.text().strip().upper()
 
@@ -230,7 +223,6 @@ class TerminDialog(QDialog):
             self._result = Termin(
                 id=self.termin.id,
                 lva_id=lva_id,
-                semester_id=sem_id,
                 typ=typ,
                 datum=d,
                 start_zeit=start_zeit,
@@ -244,7 +236,6 @@ class TerminDialog(QDialog):
             self._result = Termin(
                 id=self.new_id,
                 lva_id=lva_id,
-                semester_id=sem_id,
                 typ=typ,
                 datum=d,
                 start_zeit=start_zeit,

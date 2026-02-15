@@ -7,6 +7,21 @@ from ..core.models import Semester, Raum, Vortragende, Lehrveranstaltung, Gruppe
 
 
 class DataService:
+    def load_semester(self) -> List[Semester]:
+        """Lädt alle Semester aus semester.json (falls vorhanden)."""
+        path = self.data_dir / "semester.json"
+        if not path.exists():
+            return []
+        raw = json.loads(path.read_text(encoding="utf-8")).get("semester", [])
+        out = []
+        for x in raw:
+            out.append(Semester(
+                id=x["id"],
+                name=x["name"],
+                start=datetime.strptime(x["start"], "%Y-%m-%d").date(),
+                end=datetime.strptime(x["end"], "%Y-%m-%d").date(),
+            ))
+        return out
     """
     Minimaler JSON-Speicher: lädt/schreibt die Projekt-JSON-Dateien aus dem data/-Ordner.
     """
@@ -98,7 +113,6 @@ class DataService:
             out.append(Termin(
                 id=x["id"],
                 lva_id=x["lva_id"],
-                semester_id=x["semester_id"],
                 typ=x["typ"],
                 datum=datum,
                 start_zeit=start_zeit,
@@ -119,7 +133,9 @@ class DataService:
 
 
     def load_settings(self) -> Dict[str, Any]:
-        return self._read("settings.json")
+        # settings.json is now in src/
+        settings_path = Path(__file__).parent / "../settings.json"
+        return json.loads(settings_path.read_text(encoding="utf-8"))
 
     # ---------- SAVE ----------
     def save_semester(self, semester: List[Semester]) -> None:
@@ -159,7 +175,6 @@ class DataService:
             "termine": [{
                 "id": t.id,
                 "lva_id": t.lva_id,
-                "semester_id": t.semester_id,
                 "typ": t.typ,
                 "datum": self._fmt_date(t.datum) if t.datum is not None else None,
                 "start_zeit": self._fmt_time(t.start_zeit) if t.start_zeit else None,
@@ -179,5 +194,6 @@ class DataService:
         }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def save_settings(self, settings: Dict[str, Any]) -> None:
-        # minimal guard
-        self._write("settings.json", settings)
+        # Save to src/settings.json
+        settings_path = Path(__file__).parent / "../settings.json"
+        settings_path.write_text(json.dumps(settings, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
