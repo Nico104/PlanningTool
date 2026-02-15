@@ -12,12 +12,6 @@ from ..utils.datetime_utils import date_to_qdate, qdate_to_date
 
 
 class FreieTageDialog(QDialog):
-    """
-    Editiert 1 Eintrag aus freie_tage.json:
-      - single: {"datum": "YYYY-MM-DD", "beschreibung": "..."}
-      - range:  {"von_datum": "...", "bis_datum": "...", "beschreibung": "..."}
-    """
-
     def __init__(self, parent: QWidget, item: Optional[Dict[str, Any]] = None):
         super().__init__(parent)
         self.setObjectName("AppDialog")
