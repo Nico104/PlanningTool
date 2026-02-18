@@ -1,3 +1,9 @@
+QLabel#LvaHeaderLabel {
+  font-size: 15px;
+  color: #333;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
 QTabBar QToolButton {
   background: white;
   border: 1px solid #cccccc;

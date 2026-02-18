@@ -3,7 +3,7 @@ from typing import List, Dict
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout,
-    QScrollArea, QMenu, QFrame
+    QScrollArea, QMenu, QFrame, QLabel
 )
 
 from ..utils.datetime_utils import fmt_date, fmt_time
@@ -11,6 +11,8 @@ from ...core.models import Termin, Lehrveranstaltung, Raum
 from ..components.cards.termin_card import TerminCard
 from ..components.dragdrop.termin_drop_area import TerminDropArea
 from datetime import date as date, time as time
+from collections import defaultdict
+
 
 class TermineDock(QDockWidget):
     termin_double_clicked = Signal(str)
@@ -89,44 +91,57 @@ class TermineDock(QDockWidget):
 
         terms = sorted(terms, key=_sort_key)
 
+        # Group termine by lva_id
+        lva_groups = defaultdict(list)
         for t in terms:
-            lva = next((l for l in self._lvas if l.id == t.lva_id), None)
-            raum = next((r for r in self._raeume if r.id == t.raum_id), None)
+            lva_groups[t.lva_id].append(t)
 
-            title = f"{t.lva_id} – {(lva.name if lva else '')}".strip(" –")
-            raum_txt = f"{t.raum_id} – {(raum.name if raum else '')}".strip(" –")
+        # Sort LVA groups by LVA name (if available), else by lva_id
+        def lva_sort_key(lva_id):
+            lva = next((l for l in self._lvas if l.id == lva_id), None)
+            return (lva.name if lva else str(lva_id))
 
-            # date/time display (safe for None)
-            date_text = fmt_date(t.datum)
-            end_time = t.get_end_time()
-            time_text = (
-                f"{fmt_time(t.start_zeit)} – {fmt_time(end_time)} ({t.duration} min)"
-                if t.start_zeit and end_time
-                else ""
-            )
+        for lva_id in sorted(lva_groups.keys(), key=lva_sort_key):
+            lva = next((l for l in self._lvas if l.id == lva_id), None)
+            lva_name = lva.name if lva else str(lva_id)
+            
+            # Insert LVA heade
+            lva_label = QLabel(lva_name)
+            lva_label.setObjectName("LvaHeaderLabel")
+            lva_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+            self.list_layout.insertWidget(self.list_layout.count() - 1, lva_label)
 
-            card = TerminCard(
-                termin_id=t.id,
-                title=title,
-                date=date_text,
-                time=time_text,
-                typ=t.typ,
-                raum=raum_txt,
-                ap=t.anwesenheitspflicht,
-                duration=t.get_duration_minutes(),
-                parent=self.container,
-            )
+            for t in lva_groups[lva_id]:
+                raum = next((r for r in self._raeume if r.id == t.raum_id), None)
+                title = f"{t.lva_id} – {(lva.name if lva else '')}".strip(" –")
+                raum_txt = f"{t.raum_id} – {(raum.name if raum else '')}".strip(" –")
+                date_text = fmt_date(t.datum)
+                end_time = t.get_end_time()
+                time_text = (
+                    f"{fmt_time(t.start_zeit)} – {fmt_time(end_time)} ({t.duration} min)"
+                    if t.start_zeit and end_time
+                    else ""
+                )
 
-            card.double_clicked.connect(self.termin_double_clicked.emit)
-            card.right_clicked.connect(self._open_menu)
+                card = TerminCard(
+                    termin_id=t.id,
+                    title=title,
+                    date=date_text,
+                    time=time_text,
+                    typ=t.typ,
+                    raum=raum_txt,
+                    ap=t.anwesenheitspflicht,
+                    duration=t.get_duration_minutes(),
+                    parent=self.container,
+                )
 
-            self.list_layout.insertWidget(self.list_layout.count() - 1, card)
+                card.double_clicked.connect(self.termin_double_clicked.emit)
+                card.right_clicked.connect(self._open_menu)
+
+                self.list_layout.insertWidget(self.list_layout.count() - 1, card)
 
 
     def _on_drop_to_list(self, termin_id: str) -> None:
-        """
-        Dropping a termin back into the list means: unassign it
-        """
         self.termin_unassign_requested.emit(termin_id)
 
     def _open_menu(self, termin_id: str) -> None:

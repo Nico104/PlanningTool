@@ -1,5 +1,4 @@
 Konflikte:
-
 - Lva anmeldung und raum kapazität für VO
 
 Data Formats?
@@ -27,7 +26,6 @@ konflikte
 raume
 settings
 
-
 populate freie tage
 
 freie tage im calendar
@@ -42,3 +40,6 @@ Bug: Someime a Day eats the dates after time slot change
 qss spinbuttons
 
 Custom Data Path, Serverfolder
+
+Data folder? check if json? whcih? which cn be imported, which have to be created?
+
