@@ -23,3 +23,5 @@ Termine, Gruppierte Liste? Extra Filter oder können Terminliste und Kalender di
 Wollen wir zusätzlcihe generelle Filter?
 
 Themes? Dark/Light/Contrast?
+
+Pro Semester Ansicht, Termine die in anmdere semester reichen
