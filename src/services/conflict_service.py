@@ -6,7 +6,6 @@ from ..core.models import Termin, Lehrveranstaltung, Raum, Semester, ConflictIss
 
 
 def load_conflicts(path=None):
-    """Load conflicts from a JSON file."""
     path = path or "data/konflikte.json"
     abs_path = os.path.abspath(path)
     try:
@@ -17,7 +16,6 @@ def load_conflicts(path=None):
         return []
 
 def save_conflicts(conflicts, path=None):
-    """Save conflicts to a JSON file."""
     path = path or "data/konflikte.json"
     try:
         with open(path, "w", encoding="utf-8") as f:
@@ -30,8 +28,6 @@ UNASSIGNED_DATE = date(2026, 1, 1)
 
 
 class ConflictDetector:
-    """Detects scheduling conflicts and warnings, respecting settings from konflikte.json."""
-
     def __init__(self, 
                  lvas: List[Lehrveranstaltung],
                  raeume: List[Raum],
@@ -47,17 +43,11 @@ class ConflictDetector:
                 self.conflict_settings[key] = entry
     
     def is_assigned(self, termin: Termin) -> bool:
-        """Check if a Termin has a real assigned date (not sentinel/None)."""
         return (termin.datum is not None and 
                 termin.datum != UNASSIGNED_DATE and
                 termin.start_zeit is not None)
     
     def times_overlap(self, t1: Termin, t2: Termin) -> bool:
-        """Check if two Termine overlap in time.
-        
-        Requires both to have start_zeit and duration.
-        Treats back-to-back (end == start) as NOT overlapping.
-        """
         if not t1.start_zeit or not t2.start_zeit:
             return False
         if t1.duration <= 0 or t2.duration <= 0:
@@ -72,12 +62,6 @@ class ConflictDetector:
         # startA < endB AND startB < endA
         return (t1.start_zeit < end2) and (t2.start_zeit < end1)
     
-    def get_planning_period(self, termine: List[Termin]) -> Optional[Tuple[date, date]]:
-        """Get planning start/end dates from the first available Termin (legacy: was per semester)."""
-        for t in termine:
-            # Assume all termine have the same start/end
-            return (getattr(t, "start", None), getattr(t, "end", None))
-        return None
     
     def detect_all(self, termine: List[Termin]) -> List[ConflictIssue]:
         """Detect all conflicts and warnings in the given Termine list, respecting settings from konflikte.json."""
@@ -233,37 +217,6 @@ class ConflictDetector:
                             ))
         return conflicts
     
-    def detect_outside_period_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
-        """Detect warnings for dates outside the planning period. Uses settings if provided."""
-        warnings = []
-        for t in termine:
-            if not t.datum:
-                continue
-            period = self.get_planning_period(termine)
-            if not period:
-                continue
-            start, end = period
-            if start is None or end is None:
-                continue
-            if t.datum < start or t.datum > end:
-                lva = next((l for l in self.lvas if l.id == t.lva_id), None)
-                raum = next((r for r in self.raeume if r.id == t.raum_id), None)
-                msg = f"Datum außerhalb des Planungszeitraums ({start.strftime('%d.%m.%Y')} - {end.strftime('%d.%m.%Y')})"
-                if settings and settings.get('description'):
-                    msg += f" ({settings['description']})"
-                warnings.append(ConflictIssue(
-                    severity="warning",
-                    category="time_period",
-                    termin_ids=[t.id],
-                    message=msg,
-                    datum=t.datum,
-                    zeit_von=t.start_zeit,
-                    zeit_bis=t.get_end_time(),
-                    raum=raum.name if raum else "",
-                    lva=lva.name if lva else t.lva_id,
-                    gruppe=t.gruppe.name if t.gruppe else ""
-                ))
-        return warnings
     
     def detect_duration_warnings(self, termine: List[Termin], settings=None) -> List[ConflictIssue]:
         """Detect warnings for Termine that are unusually short (<30min) or long (>4h)."""

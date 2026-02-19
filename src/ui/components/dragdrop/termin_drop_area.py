@@ -4,9 +4,6 @@ from PySide6.QtWidgets import QWidget
 
 
 class TerminDropArea(QWidget):
-    """
-    Drop target for Termine list: dropping here means unassign date/time
-    """
     terminDroppedToList = Signal(str)
     MIME = "application/termin-id"
 

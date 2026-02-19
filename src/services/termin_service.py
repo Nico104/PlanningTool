@@ -1,14 +1,14 @@
 from datetime import date, datetime, time, timedelta
 from typing import List, Optional, Dict, Tuple
 
-from ..core.models import Termin, Zeitfenster, Konflikt
+from ..core.models import Termin, Zeitfenster, ConflictIssue
 
 
 class TerminService:
     def __init__(self, settings: Dict):
         self.settings = settings
 
-    def find_room_conflicts(self, termine: List[Termin], semester_id: Optional[str] = None) -> List[Konflikt]:
+    def find_room_conflicts(self, termine: List[Termin], semester_id: Optional[str] = None) -> List[ConflictIssue]:
         # Gruppiere nach (raum_id, datum)
         buckets: Dict[Tuple[str, date], List[Termin]] = {}
         for t in termine:
@@ -20,7 +20,7 @@ class TerminService:
             
             buckets.setdefault((t.raum_id, t.datum), []).append(t)
 
-        conflicts: List[Konflikt] = []
+        conflicts: List[ConflictIssue] = []
         for (room, day), ts in buckets.items():
             ts_sorted = sorted(ts, key=lambda x: x.start_zeit)
             for i in range(len(ts_sorted)):

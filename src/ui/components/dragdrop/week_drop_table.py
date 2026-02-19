@@ -1,15 +1,11 @@
-from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect
-from PySide6.QtGui import QDropEvent, QDragMoveEvent, QPainter, QPen, QColor
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect, QMimeData
+from PySide6.QtGui import QDropEvent, QDragMoveEvent, QPainter, QPen, QColor, QDrag
 from PySide6.QtWidgets import QTableWidget, QAbstractItemView, QTableWidgetSelectionRange
+
 import math
 
 
 class WeekDropTable(QTableWidget):
-    """
-    Drop target for Termine.
-    Snaps hover to nearest (row, col) and shows a drop preview.
-    Emits: (termin_id, row, col) based on drop position.
-    """
     terminDropped = Signal(str, int, int)
     MIME = "application/termin-id"
 
@@ -80,7 +76,7 @@ class WeekDropTable(QTableWidget):
             duration = self._slot_minutes
         span = max(1, int(math.ceil(duration / max(1, self._slot_minutes))))
 
-        pos = e.position().toPoint()  # viewport coords (Qt6)
+        pos = e.position().toPoint()
         self._last_drag_pos = pos
 
         r = self.rowAt(pos.y())
@@ -163,16 +159,13 @@ class WeekDropTable(QTableWidget):
             sb.setValue(sb.value() + dx * 6)
 
     def set_duration_preview_provider(self, provider, slot_minutes: int) -> None:
-        """Set provider to resolve duration minutes for a termin_id."""
         self._duration_provider = provider
         self._slot_minutes = max(1, int(slot_minutes))
 
     def set_color_provider(self, provider) -> None:
-        """Set provider to resolve background color for a termin_id."""
         self._color_provider = provider
 
     def set_text_provider(self, provider) -> None:
-        """Set provider to resolve display text for a termin_id."""
         self._text_provider = provider
 
     # Drop preview
@@ -254,9 +247,6 @@ class WeekDropTable(QTableWidget):
                 return
         else:
             return
-
-        from PySide6.QtGui import QDrag
-        from PySide6.QtCore import QMimeData
 
         drag = QDrag(self)
         mime = QMimeData()

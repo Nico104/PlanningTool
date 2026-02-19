@@ -10,6 +10,7 @@ from ...services.id_service import next_id
 from ..dialogs import LVADialog, RaumDialog, SemesterDialog
 from ..dialogs.freie_tage_dialog import FreieTageDialog
 from ..dialogs.termin_dialog import TerminDialog
+from ..components.widgets.delete_dialog import DeleteDialog
 
 
 class CrudHandlers:
@@ -38,7 +39,6 @@ class CrudHandlers:
         self.freie_tage_dock = freie_tage_dock
         self.data_dir = data_dir
 
-    # ---------- termine edit (delegiert an planner)
     def edit_termin_by_id(self, tid: str) -> bool:
         termine = self.ds.load_termine()
         cur = next((t for t in termine if t.id == tid), None)
@@ -67,9 +67,6 @@ class CrudHandlers:
         self.planner.refresh()
         return True
 
-    # ---------- CRUD Freie Tage
-        path = self._freie_tage_path()
-        return self._read_json_list(path, "freie_tage")
 
     def add_freie_tage(self) -> None:
         path = self._freie_tage_path()
@@ -145,7 +142,6 @@ class CrudHandlers:
         self._write_freie_tage(path, freie)
         self.planner.refresh()
 
-    # ---------- CRUD Termine
     def add_termin(self, default_qdate=None, auto_id: bool = False) -> bool:
         dlg = TerminDialog(
             self.parent,
@@ -184,31 +180,6 @@ class CrudHandlers:
         if not tid:
             return
 
-        # Custom delete dialog
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox
-        class DeleteDialog(QDialog):
-            def __init__(self, parent, text):
-                super().__init__(parent)
-                self.setObjectName("AppDialog")
-                self.setWindowTitle("Löschen")
-                self.setModal(True)
-                lay = QVBoxLayout(self)
-                lay.setContentsMargins(16, 16, 16, 16)
-                lay.setSpacing(12)
-                label = QLabel(text)
-                label.setWordWrap(True)
-                lay.addWidget(label)
-                bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                bb.setObjectName("DialogButtons")
-                ok_btn = bb.button(QDialogButtonBox.Ok)
-                cancel_btn = bb.button(QDialogButtonBox.Cancel)
-                if ok_btn:
-                    ok_btn.setObjectName("PrimaryButton")
-                if cancel_btn:
-                    cancel_btn.setObjectName("SecondaryButton")
-                bb.accepted.connect(self.accept)
-                bb.rejected.connect(self.reject)
-                lay.addWidget(bb)
         dlg = DeleteDialog(self.parent, f"Termin '{tid}' wirklich löschen?")
         if dlg.exec() != QDialog.Accepted:
             return
@@ -221,31 +192,7 @@ class CrudHandlers:
         if not tid:
             return False
 
-        # Custom delete dialog
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QDialogButtonBox
-        class DeleteDialog(QDialog):
-            def __init__(self, parent, text):
-                super().__init__(parent)
-                self.setObjectName("AppDialog")
-                self.setWindowTitle("Löschen")
-                self.setModal(True)
-                lay = QVBoxLayout(self)
-                lay.setContentsMargins(16, 16, 16, 16)
-                lay.setSpacing(12)
-                label = QLabel(text)
-                label.setWordWrap(True)
-                lay.addWidget(label)
-                bb = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-                bb.setObjectName("DialogButtons")
-                ok_btn = bb.button(QDialogButtonBox.Ok)
-                cancel_btn = bb.button(QDialogButtonBox.Cancel)
-                if ok_btn:
-                    ok_btn.setObjectName("PrimaryButton")
-                if cancel_btn:
-                    cancel_btn.setObjectName("SecondaryButton")
-                bb.accepted.connect(self.accept)
-                bb.rejected.connect(self.reject)
-                lay.addWidget(bb)
+        
         dlg = DeleteDialog(self.parent, f"Termin '{tid}' wirklich löschen?")
         if dlg.exec() != QDialog.Accepted:
             return False
@@ -353,8 +300,7 @@ class CrudHandlers:
             json.dumps({key: items}, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-
-    # ---------- CRUD LVAs
+    
     def add_lva(self) -> None:
         dlg = LVADialog(self.parent, None)
         if dlg.exec() != QDialog.Accepted or not dlg.result:
@@ -414,8 +360,7 @@ class CrudHandlers:
         self.ds.save_lvas(lvas)
         self.ds.save_termine(terms)
         self.planner.refresh()
-
-    # ---------- CRUD Rooms
+    
     def add_room(self) -> None:
         dlg = RaumDialog(self.parent, None)
         if dlg.exec() != QDialog.Accepted or not dlg.result:
@@ -476,7 +421,7 @@ class CrudHandlers:
         self.ds.save_termine(terms)
         self.planner.refresh()
 
-    # ---------- CRUD Semester
+    
     def add_semester(self) -> None:
         dlg = SemesterDialog(self.parent, None)
         if dlg.exec() != QDialog.Accepted or not dlg.result:

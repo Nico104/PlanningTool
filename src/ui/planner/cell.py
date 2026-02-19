@@ -8,7 +8,7 @@ from PySide6.QtGui import QPixmap
 
 
 class TerminCard(QLabel):
-    """A compact card widget for displaying a single termin."""
+    #A compact card widget for displaying a single termin
     MIME = "application/termin-id"
     doubleClicked = Signal(str)  # Emits termin_id
     _focused_card_ref: weakref.ref | None = None

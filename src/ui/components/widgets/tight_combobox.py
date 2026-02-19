@@ -1,17 +1,11 @@
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QFontMetrics
-from PySide6.QtWidgets import QComboBox, QStyledItemDelegate
-from PySide6.QtWidgets import QFrame
-from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QPalette, QColor
-
-from PySide6.QtWidgets import QListView
+from PySide6.QtWidgets import QComboBox, QStyledItemDelegate, QFrame, QApplication, QListView
 
 
 class _TightDelegate(QStyledItemDelegate):
     def sizeHint(self, option, index):
         sz = super().sizeHint(option, index)
-        # tighten vertical space a bit
         sz.setHeight(max(24, sz.height() - 2))
         return sz
 
@@ -33,11 +27,10 @@ class TightComboBox(QComboBox):
         self._compact_height = compact_height
         self._min_popup_width = min_popup_width
 
-        # Keep it tight
+
         self.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
         self.setMinimumHeight(self._compact_height)
 
-        # Nicer popup behavior / look
         self.setItemDelegate(_TightDelegate(self))
         self._apply_popup_window_flags()
         
@@ -54,24 +47,10 @@ class TightComboBox(QComboBox):
         if row_h <= 0:
             row_h = 28
 
-        # add a little extra for borders/padding so it never clips
         extra = 12
         v.setFixedHeight(row_h * n + extra)
 
 
-    def _fit_popup_height_old(self):
-        v = self.view()
-        n = min(self.count(), self.maxVisibleItems())
-        if n <= 0:
-            return
-
-        row_h = v.sizeHintForRow(0)
-        if row_h <= 0:
-            row_h = 24
-
-        # Total rows + a tiny safety pixel so it doesn't clip
-        total = row_h * n + 2
-        v.setFixedHeight(total)
 
 
 
@@ -80,8 +59,7 @@ class TightComboBox(QComboBox):
         w = v.window()
 
         w.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint)
-
-        # ✅ kill the white box behind rounded corners
+        
         w.setAttribute(Qt.WA_TranslucentBackground, True)
         w.setStyleSheet("background: transparent;")   # only window, not the view
 
@@ -94,31 +72,26 @@ class TightComboBox(QComboBox):
 
 
 
-    def wheelEvent(self, event):
-        # Prevent accidental changes while scrolling
-        event.ignore()
+    # def wheelEvent(self, event):
+    #     # Prevent accidental changes while scrolling
+    #     event.ignore()
 
     def showPopup(self):
         self._apply_popup_window_flags()
         self._sync_popup_styling()
         self._fit_popup_width()
-        self._fit_popup_height()   # ✅ add this
+        self._fit_popup_height()  
         super().showPopup()
-        # w = self.view().window()
-        # w.setStyleSheet("background: magenta;")
 
 
     def _fit_popup_width(self):
         fm = QFontMetrics(self.font())
 
-        # Measure text widths (include a bit of padding + arrow area)
         longest = 0
         for i in range(self.count()):
             t = self.itemText(i)
             longest = max(longest, fm.horizontalAdvance(t))
 
-        # Add padding, scrollbar, margins, arrow space
-        # (numbers chosen to look good on Fusion/Windows/Linux)
         padding = 52
         target = longest + padding
         target = max(self._min_popup_width, target)
@@ -135,9 +108,6 @@ class TightComboBox(QComboBox):
         v = self.view()
         w = v.window()
 
-
-
-        # --- Style the POPUP WINDOW (this removes the white behind) ---
         w.setAttribute(Qt.WA_StyledBackground, True)
         w.setStyleSheet("""
             /* This is the container behind the list */
@@ -146,13 +116,11 @@ class TightComboBox(QComboBox):
             border-radius: 1px;
         """)
 
-        # Remove the container padding that causes edges to show through
         lay = w.layout()
         if lay:
             lay.setContentsMargins(0, 0, 0, 0)
             lay.setSpacing(0)
-
-        # --- Make the VIEW transparent so the window provides the rounded background ---
+            
         v.setStyleSheet("""
             QAbstractItemView {
                 background: transparent;
@@ -180,7 +148,6 @@ class TightComboBox(QComboBox):
                 color: white;
             }
 
-            /* slim scrollbar */
             QScrollBar:vertical {
                 width: 10px;
                 background: transparent;
@@ -198,23 +165,3 @@ class TightComboBox(QComboBox):
 
 
 
-    def _sync_popup_styling_old(self):
-        v = self.view()
-        w = v.window()
-
-        # 1) Re-apply the *application* stylesheet to the popup window
-        app = QApplication.instance()
-        if app:
-            ss = app.styleSheet()
-            if ss:
-                w.setStyleSheet(ss)
-                v.setStyleSheet(ss)
-                v.viewport().setStyleSheet(ss)
-
-        # 2) Force highlight colors (this kills the brown 100%)
-        # pal = v.palette()
-        # pal.setColor(QPalette.Highlight, QColor("#ffffff"))          # selection bg
-        # pal.setColor(QPalette.HighlightedText, QColor("black"))    # selection text
-        # v.setPalette(pal)
-        # v.viewport().setPalette(pal)
-        # w.setPalette(pal)

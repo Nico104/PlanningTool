@@ -4,11 +4,6 @@ from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QAbstractItemView
 
 
 class TerminDragTable(QTableWidget):
-    """
-    Drag source for Termine.
-    - Put the termin id into column 0 (hidden is OK).
-    - User can drag any row; we emit mime: application/termin-id
-    """
     MIME = "application/termin-id"
 
     def __init__(self, parent=None):

@@ -67,8 +67,6 @@ class TerminCard(QFrame):
 
         self.setObjectName("TerminCard")
         self.setCursor(Qt.PointingHandCursor)
-
-        # wichtig für runde Ecken + Background zuverlässig
         self.setAttribute(Qt.WA_StyledBackground, True)
 
         root = QVBoxLayout(self)
@@ -104,7 +102,6 @@ class TerminCard(QFrame):
         chips.addStretch(1)
         root.addLayout(chips)
 
-    # ---------- DnD ----------
     def mousePressEvent(self, e: QMouseEvent) -> None:
         if e.button() == Qt.LeftButton:
             self._press_pos = e.pos()
@@ -132,7 +129,7 @@ class TerminCard(QFrame):
         try:
             p.setRenderHint(QPainter.Antialiasing, True)
 
-            scale = 0.6  # 👈 smaller (0.5–0.9 are typical)
+            scale = 0.6
 
             # keep it centered
             p.translate(pm.width() * (1 - scale) / 2,
@@ -155,7 +152,6 @@ class TerminCard(QFrame):
         drag.exec(Qt.CopyAction)
 
 
-    # ---------- interactions ----------
     def mouseDoubleClickEvent(self, e: QMouseEvent) -> None:
         self.double_clicked.emit(self.termin_id)
         super().mouseDoubleClickEvent(e)

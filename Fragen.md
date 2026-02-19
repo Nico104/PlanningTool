@@ -8,6 +8,9 @@ Wie wollen wir "Semester Bearbeitungen" Exportieren bzw importieren bzw Zusammea
 
     Optionale Kooperation auch durch geteiltem Custom Data Path, aber müssen die notwendigen json irgendwie regeln (Räume, Lva, freie Tage, manuell in den Ordner geshcoben werdn) - Mit Tiss Api (Oder eventuelle Zwischen Api) kann man villeicht automatisch importieren und die semester können in der App erstellt werden, löst auch export/import problem da man nur die semester files brauchen würde (In diesem Fall ist es vileicht überscihtlicher wenn man die fachrichutng in diesen Files abspeichern würde statt in einer Ordnerstruktur)
 
+    Lehrveranstalungen? Kann mit einer erwaretten bzw angemeldet Menge an Personen gerechnet werden für Raumkapazitäten?
+    -LVA Semesterübergreifend oder eine neue LVA pro Semester -> **Generell beste Daten Struktur**
+
 
 Was sind alle Konflikte?
 
@@ -16,9 +19,6 @@ Woher kommen die rohen, ungeplanten Termine? Werden diese alle in der App erstel
 Tagesansicht, Spalten - Raum oder Dozent oder noch anders? Wollen wir eine Tagesansicht?
 
 Termine, Gruppierte Liste? Extra Filter oder können Terminliste und Kalender die Fitler Teilen (wie jetzt)? 
-
-Lehrveranstalungen? Kann mit einer erwaretten bzw angemeldet Menge an Personen gerechnet werden für Raumkapazitäten?
--LVA Semesterübergreifend oder eine neue LVA pro Semester
 
 Wollen wir zusätzlcihe generelle Filter?
 

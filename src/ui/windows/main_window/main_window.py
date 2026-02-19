@@ -232,10 +232,10 @@ class MainWindow(QMainWindow):
         self.conflicts_dock.setObjectName("dock_conflicts")
         self.addDockWidget(Qt.RightDockWidgetArea, self.conflicts_dock)
 
+        # Könnte Probleme mit anderen Layouts machen!
         total_width = self.width()
-        left = int(total_width * 0.80)   # 28% for Termine/DataEditor
-        right = int(total_width * 0.18)  # 18% for ConflictsDock
-        # self.centralWidget().setMinimumWidth(self.width() * 0.50)
+        left = int(total_width * 0.80)
+        right = int(total_width * 0.18) 
         self.resizeDocks([
             self.termine_dock,
             self.conflicts_dock

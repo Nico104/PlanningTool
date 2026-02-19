@@ -1,3 +1,19 @@
+TODO:
+-
+
+NON URGENT TODO:
+-Bugs suchen und fixen
+-verbessertes QSS Design (lokale QSS design in global file geben)
+
+BUGS:
+
+
+
+
+
+
+
+
 Konflikte:
 - Lva anmeldung und raum kapazität für VO
 
@@ -33,7 +49,6 @@ freie tage im calendar
 Export, Import
 
 Konflikte Überscheidung
-
 
 Bug: Someime a Day eats the dates after time slot change
 

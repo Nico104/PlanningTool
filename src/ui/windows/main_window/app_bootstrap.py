@@ -2,7 +2,7 @@ from pathlib import Path
 
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QMessageBox
 
 from .main_window import MainWindow
 
@@ -46,9 +46,7 @@ def run_gui() -> None:
             data_dir = project_root / "data"
     else:
         data_dir = project_root / "data"
-    from PySide6.QtWidgets import QMessageBox
-    from src.ui.dialogs.settings_dialog import SettingsDialog
-    from PySide6.QtWidgets import QDialog
+        
     while not data_dir.exists() or not data_dir.is_dir():
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Critical)
