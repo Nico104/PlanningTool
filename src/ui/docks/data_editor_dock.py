@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QDockWidget, QWidget, QVBoxLayout, QTabWidget
 
 from ...core.models import Lehrveranstaltung, Raum, Semester, Termin
 from ..utils.crud_handlers import CrudHandlers
-from .editor_tab_widget import EditorTab, make_item, selected_id
+from ..components.widgets.editor_tab_widget import EditorTab, make_item, selected_id
 from ..utils.datetime_utils import fmt_date, fmt_time
 
 

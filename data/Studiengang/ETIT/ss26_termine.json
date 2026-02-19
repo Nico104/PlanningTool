@@ -4,8 +4,8 @@
       "id": "T1",
       "lva_id": "410.101",
       "typ": "VO",
-      "datum": "2026-02-24",
-      "start_zeit": "13:00",
+      "datum": null,
+      "start_zeit": null,
       "raum_id": "E17",
       "gruppe": {
         "name": "Gruppe A",

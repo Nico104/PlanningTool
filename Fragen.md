@@ -18,5 +18,8 @@ Tagesansicht, Spalten - Raum oder Dozent oder noch anders? Wollen wir eine Tages
 Termine, Gruppierte Liste? Extra Filter oder können Terminliste und Kalender die Fitler Teilen (wie jetzt)? 
 
 Lehrveranstalungen? Kann mit einer erwaretten bzw angemeldet Menge an Personen gerechnet werden für Raumkapazitäten?
+-LVA Semesterübergreifend oder eine neue LVA pro Semester
 
 Wollen wir zusätzlcihe generelle Filter?
+
+Themes? Dark/Light/Contrast?
