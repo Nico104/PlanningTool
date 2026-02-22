@@ -4,7 +4,7 @@
   "day_end": "20:00",
   "date_format_display": "DD.MM.YYYY",
   "duration_step_minutes": 15,
-  "start_semester": "SS26",
+  "start_semester": "WS26",
   "start_fachrichtung": "ETIT",
   "data_path": ""
 }
